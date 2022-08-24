@@ -1,0 +1,18 @@
+Webfactory Loc:
+(Left,Top,Width,Height)
+OEE 510x230x300x70
+OK PARTS 1300x700x160x60
+NOK PARTS 1680x680x120x60 
+
+v2
+ScreenshotRegion("OEE",600,230,210,70)
+ScreenshotRegion("OK",1300,690,260,60) #adjusted for position before 1000 parts
+ScreenshotRegion("NOK",1680,680,190,60)
+
+ScreenshotRegion("LoadCheck",0,980,180,40)
+
+V3 xD
+"Product":(1020,620,600,50)
+"Scrap":(1700,230,120,40)
+"OEELoadCheck":(1820,230,50,50)
+"Norm":(1020,670,120,50)
