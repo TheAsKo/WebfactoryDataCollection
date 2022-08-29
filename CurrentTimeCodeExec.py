@@ -58,7 +58,7 @@ class TimeValue():
         TimeValue.Sleep=60
         return 0
 
-ThreadDict={'MachineName':['FILL','PETIG2'],'MachineURL':[1,2],'ShiftCheck':[8,12]} #In future input from UI/cfg file
+ThreadDict={'MachineName':['FILL','PETIG2'],'MachineURL':[1,2],'ShiftCheck':[-1,12]} #In future input from UI/cfg file
 
 def TimeLoop():
     logging.info('Time Loop Start')
@@ -69,7 +69,7 @@ def TimeLoop():
 
     ActualMachine={"Machine":[],"URL":[],"ShiftCheck":[]} 
     for i in range(len(ThreadDict['MachineName'])): # Gathering which machines i want to run 
-        if TimeValue.ShiftCheck == ThreadDict['ShiftCheck'][i] or TimeValue.ShiftCheck == 0:
+        if TimeValue.ShiftCheck == ThreadDict['ShiftCheck'][i] or TimeValue.ShiftCheck == 0 and ThreadDict['ShiftCheck'][i] >= 0: #TEMP FIX TO DISABLE MACHINE
             ActualMachine['Machine'] = ActualMachine['Machine'] + [ThreadDict['MachineName'][i]]
             ActualMachine['URL'] = ActualMachine['URL'] + [ThreadDict['MachineURL'][i]]
             ActualMachine['ShiftCheck'] = ActualMachine['ShiftCheck'] + [ThreadDict['ShiftCheck'][i]]
