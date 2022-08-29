@@ -19,12 +19,12 @@ ScreenRegionDict={"OEE":(600,230,210,70),'OK':(1300,680,260,100),'NOK':(1680,680
 DEBUG=1 # For my personal use , maybe cleaned up after ....
 OnlyRootDebug=True #Used to disable all libs from using logging :)
 pytesseract.pytesseract.tesseract_cmd = 'C:/Users/nsz.fu.montaz/AppData/Local/Tesseract-OCR/tesseract.exe' #Tesseract .exe bcs i cant use PATH on admin locked work device :/ need to add to GUI + maybe auto location
-tessdefault_config = "-c tessedit_char_whitelist 0123456789., tessedit_char_blacklist _"
-tessnumber_config='--psm 3 --oem 3 -c tessedit_char_whitelist=0123456789/-.%, tessedit_char_blacklist _'
+tessdefault_config = "-c tessedit_char_whitelist 0123456789. tessedit_char_blacklist _"
+tessnumber_config='--psm 3 --oem 3 -c tessedit_char_whitelist=0123456789/-.% tessedit_char_blacklist _,'
 logging.getLogger().setLevel(logging.DEBUG) #Need to add to GUI as check + need to clean/add logging
 URLDict=('https://wf-nsm.neuman.at/clients/wf-login/#/','http://wf-nsm.neuman.at/clients/wf-mes/sk/#/wfmes/view/(mainview:msc/349)','http://wf-nsm.neuman.at/clients/wf-mes/sk/#/wfmes/view/(mainview:msc/346)')
 #URLDict #Need to add some sort of autologin at start of the shift
-DeleteImagesAfterUsage=0 #Auto-cleaning of all images , maybe i should add all unnecessary files (need to be true for sure when release)
+DeleteImagesAfterUsage=1 #Auto-cleaning of all images , maybe i should add all unnecessary files (need to be true for sure when release)
 ###############################################
 # Classes and Definitions
 def SheetDictData(x,ShiftCheck): #Assign proper cell number depending on hour of data collection
