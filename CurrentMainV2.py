@@ -12,19 +12,21 @@ import mouse
 import logging
 import cv2
 import pygetwindow as gw
+import ConfigHandler as Config
 ##################################
 # Declarations
-SheetDict = {"TimeFlag":["A2","1"],"TimeSend":["B2",'1'],'OEE':['C2','1'],'OK':['D2','1'],'NOK':['E2','1'],'Product':['F2','1'],"Scrap":["G2",'1'],"Norm":["H2","1"]}
-ScreenRegionDict={"OEE":(600,230,210,70),'OK':(1300,680,260,100),'NOK':(1680,680,190,80),"Product":(1020,620,600,50),"Scrap":(1700,230,120,40),"Norm":(1020,670,120,50)}
+SheetDict = Config.ConfigRead('MAIN','SheetDict','dict')
+ScreenRegionDict = Config.ConfigRead('MAIN','ScreenRegionDict','dict')
 DEBUG=1 # For my personal use , maybe cleaned up after ....
-OnlyRootDebug=True #Used to disable all libs from using logging :)
-pytesseract.pytesseract.tesseract_cmd = 'C:/Users/nsz.fu.montaz/AppData/Local/Tesseract-OCR/tesseract.exe' #Tesseract .exe bcs i cant use PATH on admin locked work device :/ need to add to GUI + maybe auto location
-tessdefault_config = "-c tessedit_char_whitelist 0123456789. tessedit_char_blacklist _"
-tessnumber_config='--psm 3 --oem 3 -c tessedit_char_whitelist=0123456789/-.% tessedit_char_blacklist _,'
+OnlyRootDebug = Config.ConfigRead('MAIN','OnlyRootDebug','bool') #Used to disable all libs from using logging :)
+pytesseract.pytesseract.tesseract_cmd = Config.ConfigRead('MAIN','tess_cmd') #Tesseract .exe bcs i cant use PATH on admin locked work device :/ need to add to GUI + maybe auto location
+tessdefault_config = Config.ConfigRead('MAIN','tessdefault_config')
+tessnumber_config = Config.ConfigRead('MAIN','tessnumber_config')
 logging.getLogger().setLevel(logging.DEBUG) #Need to add to GUI as check + need to clean/add logging
-URLDict=('https://wf-nsm.neuman.at/clients/wf-login/#/','http://wf-nsm.neuman.at/clients/wf-mes/sk/#/wfmes/view/(mainview:msc/349)','http://wf-nsm.neuman.at/clients/wf-mes/sk/#/wfmes/view/(mainview:msc/346)')
+URLList = Config.ConfigRead('MAIN','URLList','list')
 #URLDict #Need to add some sort of autologin at start of the shift
-DeleteImagesAfterUsage=1 #Auto-cleaning of all images , maybe i should add all unnecessary files (need to be true for sure when release)
+DeleteImagesAfterUsage = Config.ConfigRead('MAIN','DeleteImagesAfterUsage') #Auto-cleaning of all images , maybe i should add all unnecessary files (need to be true for sure when release)
+LoadCheckDict = Config.ConfigRead('MAIN','LoadCheck','dict')
 ###############################################
 # Classes and Definitions
 def SheetDictData(x,ShiftCheck): #Assign proper cell number depending on hour of data collection
@@ -56,15 +58,15 @@ def ScreenshotRegion(name,Left,Top,Width,Height): #Making screenshot , not reall
     pyautogui.screenshot(str(name+".png"),region=(Left,Top,Width,Height))
 
 def LoadCheck(): #Checking if webpage is loaded fully...
-    ScreenshotRegion("LoadCheck",0,980,180,40)
-    ScreenshotRegion("ScrapLoadCheck",1820,230,70,70) #Using 2 separate ways of comparing images is not best but LoadCheck wasnt working with cv2.norm somehow
+    ScreenshotRegion("LoadCheck",LoadCheckDict["LoadCheck"][0],LoadCheckDict["LoadCheck"][1],LoadCheckDict["LoadCheck"][2],LoadCheckDict["LoadCheck"][3])
+    ScreenshotRegion("ScrapLoadCheck",LoadCheckDict["ScrapLoadCheck"][0],LoadCheckDict["ScrapLoadCheck"][1],LoadCheckDict["ScrapLoadCheck"][2],LoadCheckDict["ScrapLoadCheck"][3]) #Using 2 separate ways of comparing images is not best but LoadCheck wasnt working with cv2.norm somehow
     b1, g1, r1 = cv2.split(cv2.subtract(cv2.imread("LoadCheck.png"),cv2.imread("LoadGood.png"))) # This is good only if both things are vibrant colors
     ImgDiffGreen = 1 - cv2.norm(cv2.imread("ScrapLoadCheck.png"),cv2.imread("ScrapLoadGoodGreen.png"), cv2.NORM_L2 ) / ( 70 * 70 )
     ImgDiffRed = 1 - cv2.norm(cv2.imread("ScrapLoadCheck.png"),cv2.imread("ScrapLoadGoodRed.png"), cv2.NORM_L2 ) / ( 70 * 70 )
     logging.debug('ImgDiffGreen similarity = '+str(ImgDiffGreen)) 
     logging.debug('ImgDiffRed similarity = '+str(ImgDiffRed))
     if cv2.countNonZero(b1) == 0  and cv2.countNonZero(g1) == 0 and cv2.countNonZero(r1) == 0 and ImgDiffGreen>0.40 or ImgDiffRed>0.40: #0.40 is for moused grayness , 0.9 is normal
-        if DeleteImagesAfterUsage==1: #Extremely lazy cleaning ....
+        if DeleteImagesAfterUsage == True: #Extremely lazy cleaning ....
             try:
                 os.remove("LoadCheck.png")
                 os.remove("ScrapLoadCheck.png")
@@ -99,7 +101,7 @@ def ImageGrab(MachineName,HourValue,MachineURL):
     logging.getLogger('PIL.TiffImagePlugin').disabled = OnlyRootDebug
     logging.getLogger('PIL.PngImagePlugin').disabled = OnlyRootDebug ### Some loggers get loaded during using of sublibs ....
 
-    os.system("start chrome --start-maximized --new-window "+URLDict[MachineURL]) #Start Browser (need to add auto login - most likely just mouse clicks)
+    os.system("start chrome --start-maximized --new-window "+URLList[MachineURL]) #Start Browser (need to add auto login - most likely just mouse clicks)
     
     time.sleep(1) #Maybe not needed , i just want to be sure to get proper window selection
     window=gw.getActiveWindow()   #Forcing window maximizing
@@ -138,7 +140,7 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck):
         match each: #Editing cell value
             case "TimeFlag" : SheetDict[each][1] = str(SheetDictDataAnswer-1) #-1 = Offset used in excel for header
             case "TimeSend" : SheetDict[each][1] = time.strftime("%H:%M:%S",time.localtime())
-            case "OEE" | "Scrap" : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-2) #Extra removing % , it safer to detect and then remove than to block with blacklist
+            case "OEE" | "Scrap" : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-1) #NOT TRUE , NEED TO MONITOR DATA -> Extra removing % , it safer to detect and then remove than to block with blacklist
             case "Product" : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-5,tescfg='--psm 7 --oem 3') #Should be good , need more data
             case "OK" : #Hardcoded cleaning of value + Maybe still broken + Not pretty at all
                 x = ImageProcess(each+MachineName+str(HourValue),4)
@@ -159,7 +161,7 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck):
 
         logging.debug(str(each)+" : "+str(SheetDict[each][0]+' : '+str(SheetDict[each][1])))
         sheet[str(SheetDict[each][0])]=str(SheetDict[each][1])   #Writing into excel
-        if DeleteImagesAfterUsage==1: #Extremely lazy cleaning ....
+        if DeleteImagesAfterUsage == True: #Extremely lazy cleaning ....
             try:
                 os.remove(str(each+MachineName+str(HourValue))+".png")
             except:

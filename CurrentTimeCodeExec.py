@@ -5,6 +5,7 @@ import time
 import logging
 import CurrentMainV2
 import threading
+import ConfigHandler as Config
 ########################
 logging.getLogger().setLevel(logging.DEBUG) 
 ########################
@@ -43,13 +44,13 @@ class TimeValue():
             case _ : TimeValue.ShiftCheck=0 ; return 0, #0
 
     def __run__(): #MESSY
-        #return TimeValue.TimeCaseCheck('06:59:55')[0]  #DEBUG ALL MACHINES 
+        #return TimeValue.TimeCaseCheck('17:49:50')[0]  #TEMP
         x=time.strftime("%H:%M:%S",time.localtime())
         if 48 < int(x[3:5]) < 50 or int(x[3:5]) >= 58: #Minute check
             logging.debug("One sec cycle:"+x)
             y=TimeValue.TimeCaseCheck(x)[0]
             if y>0:
-                logging.debug("Writing hour:"+str(y))               
+                logging.debug("Writing hour:"+str(y))
                 return int(y) 
             else:
                 TimeValue.Sleep=1
@@ -58,7 +59,7 @@ class TimeValue():
         TimeValue.Sleep=60
         return 0
 
-ThreadDict={'MachineName':['FILL','PETIG2'],'MachineURL':[1,2],'ShiftCheck':[8,12],'MachineActive':[0,1]} #In future input from UI/cfg file
+ThreadDict=Config.ConfigRead('TIMECODE','ThreadDict','dict')
 
 def TimeLoop():
     logging.info('Time Loop Start')
@@ -68,8 +69,8 @@ def TimeLoop():
     logging.debug("Process hour aquired")
 
     ActualMachine={"Machine":[],"URL":[],"ShiftCheck":[]} 
-    for i in range(len(ThreadDict['MachineName'])): # Gathering which machines i want to run 
-        if TimeValue.ShiftCheck == ThreadDict['ShiftCheck'][i] or TimeValue.ShiftCheck == 0 and ThreadDict['MachineActive'][i] == 1 : 
+    for i in range(len(ThreadDict['MachineName'])): #Gathering which machines i want to run
+        if ThreadDict['MachineActive'][i] == 1 and TimeValue.ShiftCheck == ThreadDict['ShiftCheck'][i] or TimeValue.ShiftCheck == 0 : 
             ActualMachine['Machine'] = ActualMachine['Machine'] + [ThreadDict['MachineName'][i]]
             ActualMachine['URL'] = ActualMachine['URL'] + [ThreadDict['MachineURL'][i]]
             ActualMachine['ShiftCheck'] = ActualMachine['ShiftCheck'] + [ThreadDict['ShiftCheck'][i]]
