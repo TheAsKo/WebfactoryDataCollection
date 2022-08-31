@@ -111,7 +111,7 @@ def ImageGrab(MachineName,HourValue,MachineURL):
         window.maximize()
         logging.debug("Maximizing window AGAIN!") 
 
-    while LoadCheck()==0: #not great way to check i think but work
+    while LoadCheck()==0: #not great way to check i think but works
         time.sleep(1)
         logging.info("Waiting for page load")
 

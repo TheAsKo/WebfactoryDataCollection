@@ -6,6 +6,7 @@ import logging
 import CurrentMainV2
 import threading
 import ConfigHandler as Config
+import ShiftStart 
 ########################
 logging.getLogger().setLevel(logging.DEBUG) 
 ########################
@@ -44,7 +45,7 @@ class TimeValue():
             case _ : TimeValue.ShiftCheck=0 ; return 0, #0
 
     def __run__(): #MESSY
-        #return TimeValue.TimeCaseCheck('17:49:50')[0]  #TEMP
+        #return TimeValue.TimeCaseCheck('18:59:55')[0]  #TEMP
         x=time.strftime("%H:%M:%S",time.localtime())
         if 48 < int(x[3:5]) < 50 or int(x[3:5]) >= 58: #Minute check
             logging.debug("One sec cycle:"+x)
@@ -61,35 +62,46 @@ class TimeValue():
 
 ThreadDict=Config.ConfigRead('TIMECODE','ThreadDict','dict')
 
+
+def ActualMachineIndexing():
+    ActualMachine={"Machine":[],"URL":[],"ShiftCheck":[]} #USED LOCALLY FOR INDEXING
+    for i in range(len(ThreadDict['MachineName'])): #Gathering which machines i want to run
+        logging.debug("Machine: "+str(ThreadDict['MachineName'][i]+" Active: "+str(ThreadDict['MachineActive'][i]))) #Split active check before or leave it like this
+        if ThreadDict['MachineActive'][i] == 1 and TimeValue.ShiftCheck == ThreadDict['ShiftCheck'][i] or TimeValue.ShiftCheck == 0 and ThreadDict['MachineActive'][i] == 1: 
+            ActualMachine['Machine'] = ActualMachine['Machine'] + [ThreadDict['MachineName'][i]]
+            ActualMachine['URL'] = ActualMachine['URL'] + [ThreadDict['MachineURL'][i]]
+            ActualMachine['ShiftCheck'] = ActualMachine['ShiftCheck'] + [ThreadDict['ShiftCheck'][i]]
+            logging.debug('Machine queued: '+str(ThreadDict['MachineName'][i]))
+        else : logging.debug('Machine skipped: '+str(ThreadDict['MachineName'][i]))
+    return ActualMachine
+
 def TimeLoop():
     logging.info('Time Loop Start')
     while TimeValue.__run__() == 0: #Waiting for time trigger , maybe not best way for checking when value change
         time.sleep(TimeValue.Sleep)
     HourVal=str(TimeValue.__run__())
     logging.debug("Process hour aquired")
-
-    ActualMachine={"Machine":[],"URL":[],"ShiftCheck":[]} 
-    for i in range(len(ThreadDict['MachineName'])): #Gathering which machines i want to run
-        if ThreadDict['MachineActive'][i] == 1 and TimeValue.ShiftCheck == ThreadDict['ShiftCheck'][i] or TimeValue.ShiftCheck == 0 : 
-            ActualMachine['Machine'] = ActualMachine['Machine'] + [ThreadDict['MachineName'][i]]
-            ActualMachine['URL'] = ActualMachine['URL'] + [ThreadDict['MachineURL'][i]]
-            ActualMachine['ShiftCheck'] = ActualMachine['ShiftCheck'] + [ThreadDict['ShiftCheck'][i]]
-            logging.debug('Machine queued: '+str(ThreadDict['MachineName'][i]))
-        else : logging.debug('Machine skipped: '+str(ThreadDict['MachineName'][i]))
     
-    for i in range(len(ActualMachine['Machine'])): # !!!! REWRITED LOOPING NEED TO TEST !!!!
-        logging.info("Starting data gather for: "+ActualMachine['Machine'][i])
+    ActiveMachine=ActualMachineIndexing()
+    
+    for i in range(len(ActiveMachine['Machine'])): # !!!! REWRITED LOOPING NEED TO TEST !!!!
+        logging.info("Starting data gather for: "+ActiveMachine['Machine'][i])
         logging.debug('Thread 1 starting')
-        thread1=threading.Thread(target=CurrentMainV2.ImageGrab(MachineName=ActualMachine['Machine'][i],HourValue=HourVal,MachineURL=ActualMachine["URL"][i]))
+        thread1=threading.Thread(target=CurrentMainV2.ImageGrab(MachineName=ActiveMachine['Machine'][i],HourValue=HourVal,MachineURL=ActiveMachine["URL"][i]))
         thread1.start()
         thread1.join()
         logging.debug('Thread 1 finished')
         logging.debug('Thread 2 starting')
-        thread2=threading.Thread(target=CurrentMainV2.ExcelOutput(MachineName=ActualMachine['Machine'][i],HourValue=HourVal,ShiftCheck=ActualMachine['ShiftCheck'][i]))
+        thread2=threading.Thread(target=CurrentMainV2.ExcelOutput(MachineName=ActiveMachine['Machine'][i],HourValue=HourVal,ShiftCheck=ActiveMachine['ShiftCheck'][i]))
         thread2.start()
     logging.info("Time Loop Finished")
 
+StartCycle=0
 while True: #Main Cycle ...
+    if StartCycle==1:
+        MachineCreationDict=ActualMachineIndexing()
+        ShiftStart.FileCreation.__run__(0,0,MachineCreationDict)
+        StartCycle=0
     logging.info('Program Cycle started')
     thread=threading.Thread(target=TimeLoop())
     thread.start()
