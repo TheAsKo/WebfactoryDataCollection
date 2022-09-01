@@ -1,11 +1,15 @@
+# Config File - Default Create + Reading + Writing
+###############################################
+#Imports
 import configparser
 import logging
 import json
-
+###############################################
+# Declarations
 config=configparser.ConfigParser()
-configparser.BasicInterpolation()
+configparser.BasicInterpolation() #NOT WORKING NEED TO FIX FOR ADDING %
 logging.getLogger().setLevel(logging.DEBUG)
-
+###############################################
 def DefaultConfigWrite():
     config['MAIN'] = {'OnlyRootDebug':'True',
                     'tess_cmd':'C:/Users/nsz.fu.montaz/AppData/Local/Tesseract-OCR/tesseract.exe',
@@ -58,7 +62,7 @@ def ConfigWrite(data1,data2,value,Type=None):
     match Type:
         case 'list' | 'dict':
             logging.critical('Not Finished') #NEED TO FINISH
-        case 'int' | 'float' | 'bool' | 'str' | _ :
+        case 'int' | 'float' | 'bool' | 'str' | 'listfull' | 'dictfull' | _ : #full not tested
             try :
                 config[data1][data2]=str(value)
             except:

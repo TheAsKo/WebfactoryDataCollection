@@ -4,19 +4,12 @@
 import logging
 import os
 import time
-import sys
 import math
 import openpyxl
 from copy import copy
 ###############################################
+# Declarations
 logging.getLogger().setLevel(logging.DEBUG)
-###############################################
-# 
-#print('sys.argv[0] =', sys.argv[0])     #BACKUP FOR GETTING FOLDER LOCATION        
-pathname = os.path.dirname(sys.argv[0])  #FINDING WHERE IS THIS FILE LOCATED      
-#print('path =', pathname)
-#print('full path =', os.path.abspath(pathname)) 
-###############################################
 ## Copy a sheet with style, format, layout, ect. from one Excel file to another Excel file
 ## TY StackOverflow
 
@@ -74,8 +67,7 @@ def copy_cells(source_sheet, target_sheet):
             target_cell.comment = copy(source_cell.comment)
 ###############################################
 ###### Template.xlsx -> AutoData {Machine(x)-8H or 12H)
-######               -> Sledovanie{Machine(x)-8/12H Table+Final Doc
-CelMax=None 
+######               -> Sledovanie{Machine(x)-8/12H Table+Final Doc 
 
 def is_even(num):
     return num % 2 == 0
@@ -83,26 +75,14 @@ def is_even(num):
 def is_odd(num):
     return num % 2 != 0
 
-def search(list, value): #NOT PRETTY AT ALL
-    if CelMax==None:
-        print('LIST I0 = '+str(list[0]))
-        print('VALUE = '+value)
-        print('LIST CUT = '+list[0][len(list[0])-4:])
-        print('VALUE[:4]= '+value[:4])
-        print('VALUE[-4:]= '+value[len(value)-4:])
-        if list[0][:4] == value[:4] or list[0][len(list[0])-4:] == value[len(value)-4:]:
-            return int(list[1])
-        return None
-    else : return CelMax
-
 MachineCheck=(1,1)#1-8H Ranna 2-8H Poobedna 3-8H Nocna #NEED TO FINISH
 
 class FileCreation():
-    def __run__(AutoDataDirtyInput,EditFileDirtyInput,MachineDict):
+    def __run__(AutoDataDirtyInput,EditFileDirtyInput,MachineDict,PathName):
         FileCreation.SheetData=MachineDict
         print(FileCreation.SheetData)
         FileCreation.AutoData(AutoDataDirtyInput)
-        FileCreation.EditFile(EditFileDirtyInput)
+        FileCreation.EditFile(EditFileDirtyInput,PathName)
     
     def AutoData(DirtyInput):
         try:
@@ -119,7 +99,7 @@ class FileCreation():
                 target_sheet = wb_target.create_sheet('AutoData')
                 source_sheet = wb_source['AutoData-Template']
                 copy_sheet(source_sheet, target_sheet)
-                target_sheet.title='AutoData-'+str(FileCreation.SheetData['Machine'][i])+'_'+str(FileCreation.SheetData['ShiftCheck'][i])+'H'
+                target_sheet.title='AutoData-'+FileCreation.SheetData['Machine'][i]
 
             if 'Sheet' in wb_target.sheetnames:  # remove default sheet
                 wb_target.remove(wb_target['Sheet'])
@@ -129,14 +109,14 @@ class FileCreation():
                 logging.debug('MachineShift: '+str(MachineCheck[i]))
                 sheet=wb_target[g_sheet[i]]
                 sheet['O2']=str(MachineCheck[i])
-                sheet['P2']=time.strftime("%d.%m.%Y",time.gmtime())
+                sheet['P2']=time.strftime("%d.%m.%Y",time.localtime())
 
             wb_target.save('AutoData_gen.xlsx') #####AUTODATA
             wb_target.close()
             wb_source.close()
         else : pass
 
-    def EditFile(DirtyInput):
+    def EditFile(DirtyInput,pathname):
         wb_target = openpyxl.Workbook() #####SLEDOVANIE
         wb_source = openpyxl.load_workbook('Template.xlsx')
 
@@ -183,7 +163,7 @@ class FileCreation():
             TableIndex['Index'] = TableIndex['Index'] + [IndexCase]
             print(TableIndex)
             x = is_odd(i) #NOT PRETTY AT ALL BUT I CANT THINK OF ANYTHING BETTER
-            match i:
+            match i: #i0-2=x0,i3-4=x1,i5-6=x2,i7-8=x3,i9-10=x4,....
                 case 0 | 1 | 2 : x=0
                 case _ : 
                     match x:
@@ -214,11 +194,7 @@ class FileCreation():
                 logging.debug("ShiftTable : "+TableIndex['Sheet'][i])
                 while CelNum<CelMax: 
                     sheet=wb_target[TableIndex['Sheet'][i]]
-                    if TableIndex['Sheet'][i] == 'FILL_8H': x1="FILL" #HARDCODED
-                    elif TableIndex['Sheet'][i] == 'PETIG2_12H': x1="PETIG2" #NEED TO FINISH
-                    else : logging.warning('Im dumb'+TableIndex['Sheet'][i]) ; break #NEED TO FINISH
-                    x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+x1+'_'+str(CelMax)+"H'"
-                    #Pathname+filename+sheet
+                    x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i]+"'" #Pathname+filename+sheet
                     sheet['A'+str(CelNum)]="=IF("+x+"!B"+str(CelNum-4)+'="","",'+str(x)+"!B"+str(CelNum-4)+")"
                     sheet['C'+str(CelNum)]="=IF("+x+"!F"+str(CelNum-4)+'="","",'+str(x)+"!F"+str(CelNum-4)+")"
                     sheet['D'+str(CelNum)]="=IF("+x+"!H"+str(CelNum-4)+'="","",'+str(x)+"!H"+str(CelNum-4)+")"
@@ -233,5 +209,3 @@ class FileCreation():
         wb_source.close()
 
 #########################################
-#FileCreation.AutoData(0)
-#FileCreation.EditFile()

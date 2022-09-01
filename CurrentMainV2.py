@@ -1,11 +1,10 @@
-#Main Code - Image Processing + Excel Data Output
+# Main Code - Image Processing + Excel Data Output
 ###############################################
 # Imports
 from numpy import negative
 import pyautogui
 import time
 import os
-from PIL import Image
 import pytesseract
 from openpyxl import load_workbook
 import mouse
@@ -19,7 +18,7 @@ SheetDict = Config.ConfigRead('MAIN','SheetDict','dict')
 ScreenRegionDict = Config.ConfigRead('MAIN','ScreenRegionDict','dict')
 DEBUG=1 # For my personal use , maybe cleaned up after ....
 OnlyRootDebug = Config.ConfigRead('MAIN','OnlyRootDebug','bool') #Used to disable all libs from using logging :)
-pytesseract.pytesseract.tesseract_cmd = Config.ConfigRead('MAIN','tess_cmd') #Tesseract .exe bcs i cant use PATH on admin locked work device :/ need to add to GUI + maybe auto location
+pytesseract.pytesseract.tesseract_cmd = Config.ConfigRead('MAIN','tess_cmd') #Tesseract .exe bcs i cant use PATH on admin locked work device :/ need to maybe auto location
 tessdefault_config = Config.ConfigRead('MAIN','tessdefault_config')
 tessnumber_config = Config.ConfigRead('MAIN','tessnumber_config')
 logging.getLogger().setLevel(logging.DEBUG) #Need to add to GUI as check + need to clean/add logging
@@ -29,7 +28,7 @@ DeleteImagesAfterUsage = Config.ConfigRead('MAIN','DeleteImagesAfterUsage') #Aut
 LoadCheckDict = Config.ConfigRead('MAIN','LoadCheck','dict')
 ###############################################
 # Classes and Definitions
-def SheetDictData(x,ShiftCheck): #Assign proper cell number depending on hour of data collection
+def SheetDictData(x,ShiftCheck): #Assign proper cell number depending on hour of data collection , something is broken RN ! 
         match x:        #Maybe move to time table in time loop ?
             case 7 | 19 if ShiftCheck == 12: return 2;
             case 8 | 20 if ShiftCheck == 12: return 3;
@@ -63,9 +62,19 @@ def LoadCheck(): #Checking if webpage is loaded fully...
     b1, g1, r1 = cv2.split(cv2.subtract(cv2.imread("LoadCheck.png"),cv2.imread("LoadGood.png"))) # This is good only if both things are vibrant colors
     ImgDiffGreen = 1 - cv2.norm(cv2.imread("ScrapLoadCheck.png"),cv2.imread("ScrapLoadGoodGreen.png"), cv2.NORM_L2 ) / ( 70 * 70 )
     ImgDiffRed = 1 - cv2.norm(cv2.imread("ScrapLoadCheck.png"),cv2.imread("ScrapLoadGoodRed.png"), cv2.NORM_L2 ) / ( 70 * 70 )
+    ImgDiffWhite = 1 - cv2.norm(cv2.imread("ScrapLoadCheck.png"),cv2.imread("ScrapLoadGoodWhite.png"), cv2.NORM_L2 ) / ( 70 * 70 )
     logging.debug('ImgDiffGreen similarity = '+str(ImgDiffGreen)) 
     logging.debug('ImgDiffRed similarity = '+str(ImgDiffRed))
-    if cv2.countNonZero(b1) == 0  and cv2.countNonZero(g1) == 0 and cv2.countNonZero(r1) == 0 and ImgDiffGreen>0.40 or ImgDiffRed>0.40: #0.40 is for moused grayness , 0.9 is normal
+    logging.debug('ImgDiffWhite similarity = '+str(ImgDiffWhite))
+    if ImgDiffWhite > 1.10 : #DEFAULT 0.30 , DOESNT WORK
+        x=x+1
+        logging.debug('Scrap isnt loading , waiting for'+str(30-x))
+        if x==30:
+            logging.warning('Loading of OEE and scrap skipped due to long page loading times...')
+            return 1 #BREAKING CHECKING BECAUSE SCRAP+OEE ISNT LOADING
+        time.sleep(1)
+        return 0
+    elif cv2.countNonZero(b1) == 0  and cv2.countNonZero(g1) == 0 and cv2.countNonZero(r1) == 0 and ImgDiffGreen>0.40 or ImgDiffRed>0.40: #0.40 is for moused grayness , 0.9 is normal
         if DeleteImagesAfterUsage == True: #Extremely lazy cleaning ....
             try:
                 os.remove("LoadCheck.png")
@@ -109,8 +118,8 @@ def ImageGrab(MachineName,HourValue,MachineURL):
         logging.debug("Window is maximized")
     else :
         window.maximize()
-        logging.debug("Maximizing window AGAIN!") 
-
+        logging.debug("Maximizing window AGAIN!")
+         
     while LoadCheck()==0: #not great way to check i think but works
         time.sleep(1)
         logging.info("Waiting for page load")
@@ -125,10 +134,9 @@ def ImageGrab(MachineName,HourValue,MachineURL):
     mouse.click("middle")
     mouse.move(MouseCur[0],MouseCur[1])
 
-def ExcelOutput(MachineName,HourValue,ShiftCheck):
+def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile):
     logging.info("Applying data to excel")  #Excel Start
-    #wb = load_workbook(filename = str(ExcelFile[ExcelMain]))
-    wb = load_workbook(filename="AutoData.xlsx")
+    wb = load_workbook(filename="AutoData_gen.xlsx") #NEED TO ADD TO CONFIG LATER
     sheet=wb["AutoData-"+MachineName]
     
     # !!MESSY!!
@@ -144,8 +152,8 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck):
             case "Product" : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-5,tescfg='--psm 7 --oem 3') #Should be good , need more data
             case "OK" : #Hardcoded cleaning of value + Maybe still broken + Not pretty at all
                 x = ImageProcess(each+MachineName+str(HourValue),4)
-                if x=="error": #Not pretty handling
-                    SheetDict[each][1] = x
+                if x=="error" or x=="": #Not pretty handling
+                    SheetDict[each][1] = "error"
                     break  
                 while x.isdigit() == False : #Still too many infinite loops
                     logging.debug("OK before:"+x)
@@ -171,13 +179,15 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck):
     # !!MESSY!!
 
     try: #Saving Excel Document #Very barebones 
-        #wb.save(str(ExcelFile[ExcelMain]))
-        wb.save(filename="AutoData.xlsx")  
+        wb.save(filename="AutoData_gen.xlsx")  #NEED TO ADD TO CONFIG LATER
     except:
         logging.warning("Excel edit failed") 
     else:
-        logging.info('Excel edit success') 
-
-
-
+        logging.info('Excel edit success')
+        os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY TO UPDATE DATA
+        time.sleep(2)
+        MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
+        mouse.move(1920,0)
+        mouse.click("left")
+        mouse.move(MouseCur[0],MouseCur[1])
 
