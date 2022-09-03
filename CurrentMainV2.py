@@ -12,6 +12,7 @@ import logging
 import cv2
 import pygetwindow as gw
 import ConfigHandler as Config
+import keyboard
 ##################################
 # Declarations
 SheetDict = Config.ConfigRead('MAIN','SheetDict','dict')
@@ -24,7 +25,7 @@ tessnumber_config = Config.ConfigRead('MAIN','tessnumber_config')
 logging.getLogger().setLevel(logging.DEBUG) #Need to add to GUI as check + need to clean/add logging
 URLList = Config.ConfigRead('MAIN','URLList','list')
 #URLDict #Need to add some sort of autologin at start of the shift
-DeleteImagesAfterUsage = Config.ConfigRead('MAIN','DeleteImagesAfterUsage') #Auto-cleaning of all images , maybe i should add all unnecessary files (need to be true for sure when release)
+DeleteImagesAfterUsage = Config.ConfigRead('MAIN','DeleteImagesAfterUsage','bool') #Auto-cleaning of all images , maybe i should add all unnecessary files (need to be true for sure when release)
 LoadCheckDict = Config.ConfigRead('MAIN','LoadCheck','dict')
 ###############################################
 # Classes and Definitions
@@ -50,13 +51,14 @@ def SheetDictData(x,ShiftCheck): #Assign proper cell number depending on hour of
             case 12| 20 | 4  if ShiftCheck == 8: return 7;
             case 13| 21 | 5  if ShiftCheck == 8: return 8;
             case 14| 22 | 6  if ShiftCheck == 8: return 9;
-            case _ : logging.critical("Failed to allocate data to sheet disc");return 0,    
+            case _ : logging.critical("Failed to allocate data to sheet disc");return 15,    
 
 def ScreenshotRegion(name,Left,Top,Width,Height): #Making screenshot , not really needed but code looks cleaner
     logging.debug("Creating screenshot : "+name+".png")
     pyautogui.screenshot(str(name+".png"),region=(Left,Top,Width,Height))
 
 def LoadCheck(): #Checking if webpage is loaded fully...
+    LoadGood=False
     ScreenshotRegion("LoadCheck",LoadCheckDict["LoadCheck"][0],LoadCheckDict["LoadCheck"][1],LoadCheckDict["LoadCheck"][2],LoadCheckDict["LoadCheck"][3])
     ScreenshotRegion("ScrapLoadCheck",LoadCheckDict["ScrapLoadCheck"][0],LoadCheckDict["ScrapLoadCheck"][1],LoadCheckDict["ScrapLoadCheck"][2],LoadCheckDict["ScrapLoadCheck"][3]) #Using 2 separate ways of comparing images is not best but LoadCheck wasnt working with cv2.norm somehow
     b1, g1, r1 = cv2.split(cv2.subtract(cv2.imread("LoadCheck.png"),cv2.imread("LoadGood.png"))) # This is good only if both things are vibrant colors
@@ -65,25 +67,16 @@ def LoadCheck(): #Checking if webpage is loaded fully...
     ImgDiffWhite = 1 - cv2.norm(cv2.imread("ScrapLoadCheck.png"),cv2.imread("ScrapLoadGoodWhite.png"), cv2.NORM_L2 ) / ( 70 * 70 )
     logging.debug('ImgDiffGreen similarity = '+str(ImgDiffGreen)) 
     logging.debug('ImgDiffRed similarity = '+str(ImgDiffRed))
-    logging.debug('ImgDiffWhite similarity = '+str(ImgDiffWhite))
-    if ImgDiffWhite > 1.10 : #DEFAULT 0.30 , DOESNT WORK
-        x=x+1
-        logging.debug('Scrap isnt loading , waiting for'+str(30-x))
-        if x==30:
-            logging.warning('Loading of OEE and scrap skipped due to long page loading times...')
-            return 1 #BREAKING CHECKING BECAUSE SCRAP+OEE ISNT LOADING
-        time.sleep(1)
+    logging.debug('ImgDiffWhite similarity = '+str(ImgDiffWhite)) #WHITE IS NOT USED ANYWHERE AT THE MOMENT
+    if cv2.countNonZero(b1) == 0  and cv2.countNonZero(g1) == 0 and cv2.countNonZero(r1) == 0:
+        LoadGood=True
+    else:
         return 0
-    elif cv2.countNonZero(b1) == 0  and cv2.countNonZero(g1) == 0 and cv2.countNonZero(r1) == 0 and ImgDiffGreen>0.40 or ImgDiffRed>0.40: #0.40 is for moused grayness , 0.9 is normal
-        if DeleteImagesAfterUsage == True: #Extremely lazy cleaning ....
-            try:
-                os.remove("LoadCheck.png")
-                os.remove("ScrapLoadCheck.png")
-            except:
-                pass
-            else:
-                pass
+    if LoadGood==True and ImgDiffGreen>0.40 or LoadGood==True and ImgDiffRed>0.40: #0.40 is for moused grayness , 0.9 is normal
+        DeleteFile("LoadCheck.png")
+        DeleteFile("ScrapLoadCheck.png")
         logging.info("Loading of page completed...")
+        return 1 #Basically not needed because when def ends here it will return None which is not 0 so loop continues but its nice way of programming
     else:
         logging.info('Loading not finished , waiting...')
         return 0; #replacing semicolon breaks whole cycling :)
@@ -104,6 +97,24 @@ def ImageProcess(IMGName,range2=-1,range=0,tescfg=tessnumber_config): #Image Dat
 
 #print ([k for k in logging.Logger.manager.loggerDict]) #### totally not from stackoverflow :)
 
+def WindowFullScreen():
+    time.sleep(1) #Maybe not needed , i just want to be sure to get proper window selection
+    window=gw.getActiveWindow()   #Forcing window maximizing
+    if window.isMaximized == True: 
+        logging.debug("Window is maximized")
+    else :
+        window.maximize()
+        logging.debug("Maximizing window")
+
+def DeleteFile(value):
+    if DeleteImagesAfterUsage == True: #Extremely lazy cleaning ....
+        try:
+            os.remove(value)
+        except:
+            pass
+        else:
+            pass
+
 def ImageGrab(MachineName,HourValue,MachineURL):
     logging.getLogger('PIL.Image').disabled = OnlyRootDebug
     logging.getLogger('PIL').disabled = OnlyRootDebug
@@ -112,18 +123,22 @@ def ImageGrab(MachineName,HourValue,MachineURL):
 
     os.system("start chrome --start-maximized --new-window "+URLList[MachineURL]) #Start Browser (need to add auto login - most likely just mouse clicks)
     
-    time.sleep(1) #Maybe not needed , i just want to be sure to get proper window selection
-    window=gw.getActiveWindow()   #Forcing window maximizing
-    if window.isMaximized == True: 
-        logging.debug("Window is maximized")
-    else :
-        window.maximize()
-        logging.debug("Maximizing window AGAIN!")
-         
+    WindowFullScreen()
+    
+    LoadTimer=0
+    LoadRefresh=1
     while LoadCheck()==0: #not great way to check i think but works
+        LoadTimer=LoadTimer+1
+        if LoadTimer>=15 and LoadRefresh==1:
+            keyboard.press_and_release('F5')
+            logging.info('Refreshing page')
+            LoadRefresh=0
+        if LoadTimer>=35:
+            logging.info('Skipping loading...')
         time.sleep(1)
+        logging.debug('LoadTimer= '+str(LoadTimer))
         logging.info("Waiting for page load")
-
+    
     for each in ScreenRegionDict:
         logging.debug("Image Creation: "+each)
         x=ScreenRegionDict[each] #Redundant line but looks better ? + less listing through dict ? performance gains ?
@@ -169,13 +184,7 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile):
 
         logging.debug(str(each)+" : "+str(SheetDict[each][0]+' : '+str(SheetDict[each][1])))
         sheet[str(SheetDict[each][0])]=str(SheetDict[each][1])   #Writing into excel
-        if DeleteImagesAfterUsage == True: #Extremely lazy cleaning ....
-            try:
-                os.remove(str(each+MachineName+str(HourValue))+".png")
-            except:
-                pass
-            else:
-                pass
+        DeleteFile(str(each+MachineName+str(HourValue))+".png")
     # !!MESSY!!
 
     try: #Saving Excel Document #Very barebones 
@@ -185,9 +194,11 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile):
     else:
         logging.info('Excel edit success')
         os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY TO UPDATE DATA
-        time.sleep(2)
+        time.sleep(3)
+        WindowFullScreen()
+        time.sleep(1)
         MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
-        mouse.move(1920,0)
+        mouse.move(1900,10)
         mouse.click("left")
         mouse.move(MouseCur[0],MouseCur[1])
 

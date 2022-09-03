@@ -7,6 +7,9 @@ import time
 import math
 import openpyxl
 from copy import copy
+import mouse
+import keyboard
+from CurrentMainV2 import WindowFullScreen
 ###############################################
 # Declarations
 logging.getLogger().setLevel(logging.DEBUG)
@@ -75,13 +78,21 @@ def is_even(num):
 def is_odd(num):
     return num % 2 != 0
 
-MachineCheck=(1,1)#1-8H Ranna 2-8H Poobedna 3-8H Nocna #NEED TO FINISH
-
 class FileCreation():
     def __run__(AutoDataDirtyInput,EditFileDirtyInput,MachineDict,PathName):
         FileCreation.SheetData=MachineDict
-        print(FileCreation.SheetData)
         FileCreation.AutoData(AutoDataDirtyInput)
+        ########################################################
+        os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY / NEED TO RESAVE FILE IN EXCEL , FILE HAS BROKEN THEMES ON CREATION SOMEHOW
+        time.sleep(2)
+        WindowFullScreen()
+        time.sleep(1)
+        MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
+        keyboard.press_and_release('Ctrl+S')
+        mouse.move(1900,10)
+        mouse.click("left")
+        mouse.move(MouseCur[0],MouseCur[1]) 
+        ########################################################       
         FileCreation.EditFile(EditFileDirtyInput,PathName)
     
     def AutoData(DirtyInput):
@@ -104,16 +115,23 @@ class FileCreation():
             if 'Sheet' in wb_target.sheetnames:  # remove default sheet
                 wb_target.remove(wb_target['Sheet'])
                 g_sheet=wb_target.sheetnames
-
+            
             for i in range(len(g_sheet)):
-                logging.debug('MachineShift: '+str(MachineCheck[i]))
+                match time.strftime("%H",time.localtime()): #
+                    case "06" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Ranná'
+                    case "14" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Poobedná'
+                    case "22" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Nočná'
+                    case "06" if FileCreation.SheetData['ShiftCheck'][i]==12 : MachineCheck='Ranná'
+                    case "18" if FileCreation.SheetData['ShiftCheck'][i]==12 : MachineCheck='Nočná'
+                    case _ : MachineCheck='ERROR'
+                logging.debug('MachineShift: '+str(MachineCheck))
                 sheet=wb_target[g_sheet[i]]
-                sheet['O2']=str(MachineCheck[i])
+                sheet['O2']=str(MachineCheck)
                 sheet['P2']=time.strftime("%d.%m.%Y",time.localtime())
 
             wb_target.save('AutoData_gen.xlsx') #####AUTODATA
             wb_target.close()
-            wb_source.close()
+            wb_source.close()  
         else : pass
 
     def EditFile(DirtyInput,pathname):
@@ -177,7 +195,7 @@ class FileCreation():
             elif TableIndex['Index'][i]==1 :
                 logging.debug("Hodinove Sledovanie : "+TableIndex['Sheet'][i])
                 CelNum=5 #Formating offset
-                CelMax=TableIndex['Shift'][i]+6
+                CelMax=TableIndex['Shift'][i]+5
                 while CelNum<CelMax:
                     sheet=wb_target[TableIndex['Sheet'][i]]
                     x="'"+str(g_sheet[TableIndex['Index'][i]])+"'"
@@ -187,15 +205,24 @@ class FileCreation():
                     sheet['F'+str(CelNum)]="=IF("+x+"!E"+str(CelNum+1)+'="","",'+str(x)+"!E"+str(CelNum+1)+")"
                     sheet['G'+str(CelNum)]="=IF("+x+"!F"+str(CelNum+1)+'="","",'+str(x)+"!F"+str(CelNum+1)+")"
                     sheet['I'+str(CelNum)]="=IF("+x+"!T"+str(CelNum+1)+'="","",'+str(x)+"!T"+str(CelNum+1)+")"
-                    CelNum=CelNum+1        
+                    CelNum=CelNum+1
+                sheet['I2']='Pracovisko: '+str(TableIndex['Sheet'][i][20:])   
+                sheet['J2']='="Dátum: "&'+str(x)+'!G3'
+                #sheet['I3']='Meno+os.číslo:'
+                sheet['J3']='="Zmena: "&'+str(x)+'!C3'
+                        
             elif TableIndex['Index'][i]==2 :
                 CelNum=6 #Formating offset
                 CelMax=TableIndex['Shift'][i]+6
                 logging.debug("ShiftTable : "+TableIndex['Sheet'][i])
+                if   TableIndex['Shift'][i]==8 : y="Data!$B$3:$J$6"  #=VLOOKUP($C$3;Data!$B$3:$J$6;2)
+                elif TableIndex['Shift'][i]==12: y="Data!$B$9:$N$11"  #=VLOOKUP($C$3;Data!$B$9:$N$11;2)
+                else : y="ERROR" ; logging.critical("Failed to allocate hour table!")
                 while CelNum<CelMax: 
                     sheet=wb_target[TableIndex['Sheet'][i]]
                     x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i]+"'" #Pathname+filename+sheet
                     sheet['A'+str(CelNum)]="=IF("+x+"!B"+str(CelNum-4)+'="","",'+str(x)+"!B"+str(CelNum-4)+")"
+                    sheet['B'+str(CelNum)]='=VLOOKUP($C$3,'+y+','+str(CelNum-4)+')'
                     sheet['C'+str(CelNum)]="=IF("+x+"!F"+str(CelNum-4)+'="","",'+str(x)+"!F"+str(CelNum-4)+")"
                     sheet['D'+str(CelNum)]="=IF("+x+"!H"+str(CelNum-4)+'="","",'+str(x)+"!H"+str(CelNum-4)+")"
                     sheet['G'+str(CelNum)]="=IF(I"+str(CelNum)+">0,I"+str(CelNum)+",IF("+x+"!D"+str(CelNum-4)+'="","",'+str(x)+"!D"+str(CelNum-4)+"))"
@@ -203,6 +230,8 @@ class FileCreation():
                     sheet['P'+str(CelNum)]="=IF("+x+"!G"+str(CelNum-4)+'="","",'+str(x)+"!G"+str(CelNum-4)+")"
                     sheet['Q'+str(CelNum)]="=IF("+x+"!C"+str(CelNum-4)+'="","",'+str(x)+"!C"+str(CelNum-4)+")"
                     CelNum=CelNum+1
+                sheet['C3']='='+x+'!O2'
+                sheet['G3']='='+x+'!P2'
 
         wb_target.save('Hodinové_sledovanie_gen.xlsx') #####Hodinove
         wb_target.close()

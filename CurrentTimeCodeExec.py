@@ -53,7 +53,8 @@ class TimeValue():
             case _ : TimeValue.ShiftCheck=0 ; return 0, #0
 
     def __run__(): #MESSY
-        #return TimeValue.TimeCaseCheck('18:59:55')[0]  #TEMP
+        if OneCycle==1: #TEMP
+            return TimeValue.TimeCaseCheck('05:49:50')[0]  #TEMP
         x=time.strftime("%H:%M:%S",time.localtime())
         if 48 < int(x[3:5]) < 50 or int(x[3:5]) >= 58: #Minute check
             logging.debug("One sec cycle:"+x)
@@ -104,7 +105,8 @@ def TimeLoop():
         thread2.start()
     logging.info("Time Loop Finished")
 
-StartCycle=0
+OneCycle=0 #USED FOR DEBUG
+StartCycle=1
 while True: #Main Cycle ...
     if StartCycle==1:
         MachineCreationDict=ActualMachineIndexing()
@@ -115,5 +117,6 @@ while True: #Main Cycle ...
     thread.start()
     thread.join()
     logging.info('Program Cycle ended')
-    #break #TEMP
+    if OneCycle==1: #TEMP
+        break #TEMP
 
