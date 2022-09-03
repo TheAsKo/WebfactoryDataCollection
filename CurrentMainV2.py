@@ -157,7 +157,7 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile):
     # !!MESSY!!
     SheetDictDataAnswer=SheetDictData(int(HourValue),ShiftCheck) #Getting info from main thread
     for each in SheetDict: #Editing cell location 
-        x = SheetDict[each][0][:-1]
+        x = SheetDict[each][0][0:1]
         x = x+str(SheetDictDataAnswer)
         SheetDict[each][0] = str(x)
         match each: #Editing cell value
