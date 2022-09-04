@@ -1,5 +1,5 @@
 # Main Code - Image Processing + Excel Data Output
-###############################################
+##############################################################################################
 # Imports
 from numpy import negative
 import pyautogui
@@ -13,7 +13,7 @@ import cv2
 import pygetwindow as gw
 import ConfigHandler as Config
 import keyboard
-##################################
+##############################################################################################
 # Declarations
 SheetDict = Config.ConfigRead('MAIN','SheetDict','dict')
 ScreenRegionDict = Config.ConfigRead('MAIN','ScreenRegionDict','dict')
@@ -27,7 +27,7 @@ URLList = Config.ConfigRead('MAIN','URLList','list')
 #URLDict #Need to add some sort of autologin at start of the shift
 DeleteImagesAfterUsage = Config.ConfigRead('MAIN','DeleteImagesAfterUsage','bool') #Auto-cleaning of all images , maybe i should add all unnecessary files (need to be true for sure when release)
 LoadCheckDict = Config.ConfigRead('MAIN','LoadCheck','dict')
-###############################################
+##############################################################################################
 # Classes and Definitions
 def SheetDictData(x,ShiftCheck): #Assign proper cell number depending on hour of data collection , something is broken RN ! 
         match x:        #Maybe move to time table in time loop ?
@@ -52,11 +52,11 @@ def SheetDictData(x,ShiftCheck): #Assign proper cell number depending on hour of
             case 13| 21 | 5  if ShiftCheck == 8: return 8;
             case 14| 22 | 6  if ShiftCheck == 8: return 9;
             case _ : logging.critical("Failed to allocate data to sheet disc");return 15,    
-
+##############################################################################################
 def ScreenshotRegion(name,Left,Top,Width,Height): #Making screenshot , not really needed but code looks cleaner
     logging.debug("Creating screenshot : "+name+".png")
     pyautogui.screenshot(str(name+".png"),region=(Left,Top,Width,Height))
-
+##############################################################################################
 def LoadCheck(): #Checking if webpage is loaded fully...
     LoadGood=False
     ScreenshotRegion("LoadCheck",LoadCheckDict["LoadCheck"][0],LoadCheckDict["LoadCheck"][1],LoadCheckDict["LoadCheck"][2],LoadCheckDict["LoadCheck"][3])
@@ -80,7 +80,7 @@ def LoadCheck(): #Checking if webpage is loaded fully...
     else:
         logging.info('Loading not finished , waiting...')
         return 0; #replacing semicolon breaks whole cycling :)
-
+##############################################################################################
 def ImageProcess(IMGName,range2=-1,range=0,tescfg=tessnumber_config): #Image Data Extraction
     try:
         img = cv2.imread(str(IMGName)+'.png')
@@ -94,9 +94,9 @@ def ImageProcess(IMGName,range2=-1,range=0,tescfg=tessnumber_config): #Image Dat
     else:
         if DEBUG==1:logging.debug(IMGName+" processed...")
         return value
-
+##############################################################################################
 #print ([k for k in logging.Logger.manager.loggerDict]) #### totally not from stackoverflow :)
-
+##############################################################################################
 def WindowFullScreen():
     time.sleep(1) #Maybe not needed , i just want to be sure to get proper window selection
     window=gw.getActiveWindow()   #Forcing window maximizing
@@ -114,7 +114,7 @@ def DeleteFile(value):
             pass
         else:
             pass
-
+##############################################################################################
 def ImageGrab(MachineName,HourValue,MachineURL):
     logging.getLogger('PIL.Image').disabled = OnlyRootDebug
     logging.getLogger('PIL').disabled = OnlyRootDebug
@@ -129,15 +129,16 @@ def ImageGrab(MachineName,HourValue,MachineURL):
     LoadRefresh=1
     while LoadCheck()==0: #not great way to check i think but works
         LoadTimer=LoadTimer+1
+        time.sleep(1)
+        logging.debug('LoadTimer= '+str(LoadTimer))
+        logging.info("Waiting for page load")
         if LoadTimer>=15 and LoadRefresh==1:
             keyboard.press_and_release('F5')
             logging.info('Refreshing page')
             LoadRefresh=0
         if LoadTimer>=35:
             logging.info('Skipping loading...')
-        time.sleep(1)
-        logging.debug('LoadTimer= '+str(LoadTimer))
-        logging.info("Waiting for page load")
+            break
     
     for each in ScreenRegionDict:
         logging.debug("Image Creation: "+each)
@@ -148,7 +149,7 @@ def ImageGrab(MachineName,HourValue,MachineURL):
     mouse.move(10,10)
     mouse.click("middle")
     mouse.move(MouseCur[0],MouseCur[1])
-
+##############################################################################################
 def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile):
     logging.info("Applying data to excel")  #Excel Start
     wb = load_workbook(filename="AutoData_gen.xlsx") #NEED TO ADD TO CONFIG LATER
@@ -194,11 +195,12 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile):
     else:
         logging.info('Excel edit success')
         os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY TO UPDATE DATA
-        time.sleep(3)
+        time.sleep(2)
         WindowFullScreen()
         time.sleep(1)
         MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
         mouse.move(1900,10)
         mouse.click("left")
         mouse.move(MouseCur[0],MouseCur[1])
+##############################################################################################
 

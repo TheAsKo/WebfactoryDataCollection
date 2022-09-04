@@ -1,5 +1,5 @@
 #Main Code Logic -Threading+Scheduling
-###############################################
+##############################################################################################
 #Imports
 import time
 import logging
@@ -9,15 +9,16 @@ import ConfigHandler as Config
 import ShiftStart
 import os
 import sys 
-###############################################
+##############################################################################################
 # Declarations
 logging.getLogger().setLevel(logging.DEBUG)
-###############################################
+ThreadDict=Config.ConfigRead('TIMECODE','ThreadDict','dict')
+##############################################################################################
 #print('sys.argv[0] =', sys.argv[0])     #BACKUP FOR GETTING FOLDER LOCATION        
 pathname = os.path.dirname(sys.argv[0])  #FINDING WHERE IS THIS FILE LOCATED      
 #print('path =', pathname)
-#print('full path =', os.path.abspath(pathname)) 
-###############################################
+#print('full path =', os.path.abspath(pathname))
+##############################################################################################
 class TimeValue():
     ShiftCheck=0
     Sleep=0
@@ -68,10 +69,7 @@ class TimeValue():
         logging.debug("One Min Cycle : "+x)
         TimeValue.Sleep=60
         return 0
-
-ThreadDict=Config.ConfigRead('TIMECODE','ThreadDict','dict')
-
-
+##############################################################################################
 def ActualMachineIndexing():
     ActualMachine={"Machine":[],"URL":[],"ShiftCheck":[]} #USED LOCALLY FOR INDEXING
     for i in range(len(ThreadDict['MachineName'])): #Gathering which machines i want to run
@@ -83,7 +81,7 @@ def ActualMachineIndexing():
             logging.debug('Machine queued: '+str(ThreadDict['MachineName'][i]))
         else : logging.debug('Machine skipped: '+str(ThreadDict['MachineName'][i]))
     return ActualMachine
-
+##############################################################################################
 def TimeLoop():
     logging.info('Time Loop Start')
     while TimeValue.__run__() == 0: #Waiting for time trigger , maybe not best way for checking when value change
@@ -104,9 +102,9 @@ def TimeLoop():
         thread2=threading.Thread(target=CurrentMainV2.ExcelOutput(MachineName=ActiveMachine['Machine'][i],HourValue=HourVal,ShiftCheck=ActiveMachine['ShiftCheck'][i],PathToFile=pathname))
         thread2.start()
     logging.info("Time Loop Finished")
-
+##############################################################################################
 OneCycle=0 #USED FOR DEBUG
-StartCycle=1
+StartCycle=0
 while True: #Main Cycle ...
     if StartCycle==1:
         MachineCreationDict=ActualMachineIndexing()
