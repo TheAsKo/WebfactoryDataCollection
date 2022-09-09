@@ -13,6 +13,8 @@ from CurrentMainV2 import WindowFullScreen
 ###############################################
 # Declarations
 logging.getLogger().setLevel(logging.DEBUG)
+global TableIndex
+TableIndex={"Sheet":[],"Index":[],"Shift":[],"Aligment":[],} 
 ## Copy a sheet with style, format, layout, ect. from one Excel file to another Excel file
 ## TY StackOverflow
 
@@ -124,6 +126,7 @@ class FileCreation():
                     case "06" if FileCreation.SheetData['ShiftCheck'][i]==12 : MachineCheck='Ranná'
                     case "18" if FileCreation.SheetData['ShiftCheck'][i]==12 : MachineCheck='Nočná'
                     case _ : MachineCheck='ERROR'
+                TableIndex['Aligment'] = TableIndex['Aligment'] + [MachineCheck] + [MachineCheck]
                 logging.debug('MachineShift: '+str(MachineCheck))
                 sheet=wb_target[g_sheet[i]]
                 sheet['O2']=str(MachineCheck)
@@ -131,7 +134,8 @@ class FileCreation():
 
             wb_target.save('AutoData_gen.xlsx') #####AUTODATA
             wb_target.close()
-            wb_source.close()  
+            wb_source.close()
+            print(TableIndex)  
         else : pass
 
     def EditFile(DirtyInput,pathname):
@@ -168,7 +172,6 @@ class FileCreation():
         logging.debug(g_sheet)
         print(FileCreation.SheetData)
 
-        TableIndex={"Sheet":[],"Index":[],"Shift":[]} 
         for i in range(len(g_sheet)): #NOT PRETTY INDEXING METHOD
             logging.debug(g_sheet[i])
             print(i)
@@ -195,7 +198,7 @@ class FileCreation():
             elif TableIndex['Index'][i]==1 :
                 logging.debug("Hodinove Sledovanie : "+TableIndex['Sheet'][i])
                 CelNum=5 #Formating offset
-                CelMax=TableIndex['Shift'][i]+5
+                CelMax=TableIndex['Shift'][i]+CelNum
                 while CelNum<CelMax:
                     sheet=wb_target[TableIndex['Sheet'][i]]
                     x="'"+str(g_sheet[TableIndex['Index'][i]])+"'"
@@ -213,20 +216,30 @@ class FileCreation():
                         
             elif TableIndex['Index'][i]==2 :
                 CelNum=6 #Formating offset
-                CelMax=TableIndex['Shift'][i]+6
+                CelMax=TableIndex['Shift'][i]+CelNum
                 logging.debug("ShiftTable : "+TableIndex['Sheet'][i])
                 if   TableIndex['Shift'][i]==8 : y="Data!$B$3:$J$6"  #=VLOOKUP($C$3;Data!$B$3:$J$6;2)
                 elif TableIndex['Shift'][i]==12: y="Data!$B$9:$N$11"  #=VLOOKUP($C$3;Data!$B$9:$N$11;2)
                 else : y="ERROR" ; logging.critical("Failed to allocate hour table!")
-                while CelNum<CelMax: 
-                    sheet=wb_target[TableIndex['Sheet'][i]]
-                    x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i]+"'" #Pathname+filename+sheet
+                x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i]+"'" #Pathname+filename+sheet
+                while CelNum<CelMax:
+                    OKCell = "=IF(I"+str(CelNum)+">0,I"+str(CelNum)+",IF("+x+"!D"+str(CelNum-4)+'="","",'+str(x)+"!D"+str(CelNum-4)+"))"
+                    NOKCell = "=IF(J"+str(CelNum)+">0,J"+str(CelNum)+",IF("+x+"!E"+str(CelNum-4)+'="","",'+str(x)+"!E"+str(CelNum-4)+"))" 
+                    sheet=wb_target[TableIndex['Sheet'][i]] #VAR1 8H R-P-N 
+                    if TableIndex['Shift'][i] == 12 and TableIndex['Aligment'][i] == 'Nočná': #VAR 3 12H Nocna
+                        match CelNum:
+                            case 6 | 7 | 8 | 9 : pass #x+Pre0
+                            case 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 : pass #x+21
+                    elif TableIndex['Shift'][i] == 12 and TableIndex['Aligment'][i] == 'Ranná': # VAR2 12H R
+                        match CelNum :
+                            case 14 | 15 | 16 | 17 | 18 : OKCell = OKCell[:-2] + 'G13))' ; NOKCell = NOKCell[:-2] + 'H13))'
+                            case _ : pass 
                     sheet['A'+str(CelNum)]="=IF("+x+"!B"+str(CelNum-4)+'="","",'+str(x)+"!B"+str(CelNum-4)+")"
                     sheet['B'+str(CelNum)]='=VLOOKUP($C$3,'+y+','+str(CelNum-4)+')'
                     sheet['C'+str(CelNum)]="=IF("+x+"!F"+str(CelNum-4)+'="","",'+str(x)+"!F"+str(CelNum-4)+")"
                     sheet['D'+str(CelNum)]="=IF("+x+"!H"+str(CelNum-4)+'="","",'+str(x)+"!H"+str(CelNum-4)+")"
-                    sheet['G'+str(CelNum)]="=IF(I"+str(CelNum)+">0,I"+str(CelNum)+",IF("+x+"!D"+str(CelNum-4)+'="","",'+str(x)+"!D"+str(CelNum-4)+"))"
-                    sheet['H'+str(CelNum)]="=IF(J"+str(CelNum)+">0,J"+str(CelNum)+",IF("+x+"!E"+str(CelNum-4)+'="","",'+str(x)+"!E"+str(CelNum-4)+"))"
+                    sheet['G'+str(CelNum)]=OKCell
+                    sheet['H'+str(CelNum)]=NOKCell
                     sheet['P'+str(CelNum)]="=IF("+x+"!G"+str(CelNum-4)+'="","",'+str(x)+"!G"+str(CelNum-4)+")"
                     sheet['Q'+str(CelNum)]="=IF("+x+"!C"+str(CelNum-4)+'="","",'+str(x)+"!C"+str(CelNum-4)+")"
                     CelNum=CelNum+1
