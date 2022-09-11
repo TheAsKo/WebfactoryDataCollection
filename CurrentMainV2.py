@@ -105,7 +105,7 @@ def WindowFullScreen():
     else :
         window.maximize()
         logging.debug("Maximizing window")
-
+##############################################################################################
 def DeleteFile(value):
     if DeleteImagesAfterUsage == True: #Extremely lazy cleaning ....
         try:
@@ -194,13 +194,15 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile):
         logging.warning("Excel edit failed") 
     else:
         logging.info('Excel edit success')
-        os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY TO UPDATE DATA
-        time.sleep(2)
-        WindowFullScreen()
-        time.sleep(1)
-        MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
-        mouse.move(1900,10)
-        mouse.click("left")
-        mouse.move(MouseCur[0],MouseCur[1])
+##############################################################################################
+def ExcelUpdateData():
+    os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY TO UPDATE DATA
+    time.sleep(2)
+    WindowFullScreen()
+    time.sleep(1)
+    MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
+    mouse.move(1900,10)
+    mouse.click("left")
+    mouse.move(MouseCur[0],MouseCur[1])
 ##############################################################################################
 

@@ -104,7 +104,7 @@ def TimeLoop():
     logging.info("Time Loop Finished")
 ##############################################################################################
 OneCycle=0 #USED FOR DEBUG
-StartCycle=0
+StartCycle=1
 while True: #Main Cycle ...
     if StartCycle==1:
         MachineCreationDict=ActualMachineIndexing()
@@ -114,6 +114,7 @@ while True: #Main Cycle ...
     thread=threading.Thread(target=TimeLoop())
     thread.start()
     thread.join()
+    CurrentMainV2.ExcelUpdateData() #Moved update to end of cycle 
     logging.info('Program Cycle ended')
     if OneCycle==1: #TEMP
         break #TEMP

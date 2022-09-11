@@ -108,7 +108,6 @@ class FileCreation():
             wb_target = openpyxl.Workbook() ####AUTODATA
             wb_source = openpyxl.load_workbook('Template.xlsx')
             for i in range(len(FileCreation.SheetData['Machine'])):
-                print(i)
                 target_sheet = wb_target.create_sheet('AutoData')
                 source_sheet = wb_source['AutoData-Template']
                 copy_sheet(source_sheet, target_sheet)
@@ -120,22 +119,22 @@ class FileCreation():
             
             for i in range(len(g_sheet)):
                 match time.strftime("%H",time.localtime()): #
-                    case "06" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Ranná'
-                    case "14" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Poobedná'
-                    case "22" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Nočná'
-                    case "06" if FileCreation.SheetData['ShiftCheck'][i]==12 : MachineCheck='Ranná'
-                    case "18" if FileCreation.SheetData['ShiftCheck'][i]==12 : MachineCheck='Nočná'
-                    case _ : MachineCheck='ERROR'
+                    case "06" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Ranná' ; ShiftIndex=1
+                    case "14" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Poobedná' ; ShiftIndex=2
+                    case "22" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Nočná' ; ShiftIndex=3
+                    case "06" if FileCreation.SheetData['ShiftCheck'][i]==12 : MachineCheck='Ranná' ; ShiftIndex=4
+                    case "18" if FileCreation.SheetData['ShiftCheck'][i]==12 : MachineCheck='Nočná' ; ShiftIndex=5
+                    case _ : MachineCheck='ERROR' ; ShiftIndex='ERROR'
                 TableIndex['Aligment'] = TableIndex['Aligment'] + [MachineCheck] + [MachineCheck]
-                logging.debug('MachineShift: '+str(MachineCheck))
+                logging.debug('MachineShift: '+MachineCheck)
                 sheet=wb_target[g_sheet[i]]
-                sheet['O2']=str(MachineCheck)
+                sheet['O2']=MachineCheck
                 sheet['P2']=time.strftime("%d.%m.%Y",time.localtime())
+                sheet['O3']=str(ShiftIndex)
 
             wb_target.save('AutoData_gen.xlsx') #####AUTODATA
             wb_target.close()
-            wb_source.close()
-            print(TableIndex)  
+            wb_source.close() 
         else : pass
 
     def EditFile(DirtyInput,pathname):
@@ -174,8 +173,6 @@ class FileCreation():
 
         for i in range(len(g_sheet)): #NOT PRETTY INDEXING METHOD
             logging.debug(g_sheet[i])
-            print(i)
-            print(math.floor(i/2)) 
             match g_sheet[i][0:2]: 
                 case 'Da' : logging.debug('Skipping editing Data') ; continue #Another skipping of Data Sheet 
                 case 'Ho' : logging.debug('FinalTable') ; IndexCase=1      
@@ -199,9 +196,9 @@ class FileCreation():
                 logging.debug("Hodinove Sledovanie : "+TableIndex['Sheet'][i])
                 CelNum=5 #Formating offset
                 CelMax=TableIndex['Shift'][i]+CelNum
+                sheet=wb_target[TableIndex['Sheet'][i]]
+                x="'"+str(g_sheet[i])+"'"
                 while CelNum<CelMax:
-                    sheet=wb_target[TableIndex['Sheet'][i]]
-                    x="'"+str(g_sheet[TableIndex['Index'][i]])+"'"
                     sheet['C'+str(CelNum)]="=IF("+x+"!B"+str(CelNum+1)+'="","",'+str(x)+"!B"+str(CelNum+1)+")"
                     sheet['D'+str(CelNum)]="=IF("+x+"!C"+str(CelNum+1)+'="","",'+str(x)+"!C"+str(CelNum+1)+")"
                     sheet['E'+str(CelNum)]="=IF("+x+"!D"+str(CelNum+1)+'="","",'+str(x)+"!D"+str(CelNum+1)+")"
@@ -218,14 +215,14 @@ class FileCreation():
                 CelNum=6 #Formating offset
                 CelMax=TableIndex['Shift'][i]+CelNum
                 logging.debug("ShiftTable : "+TableIndex['Sheet'][i])
-                if   TableIndex['Shift'][i]==8 : y="Data!$B$3:$J$6"  #=VLOOKUP($C$3;Data!$B$3:$J$6;2)
-                elif TableIndex['Shift'][i]==12: y="Data!$B$9:$N$11"  #=VLOOKUP($C$3;Data!$B$9:$N$11;2)
+                if   TableIndex['Shift'][i]==8 : y="Data!$B$3:$J$6" ;  x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i][:-3]+"'" #Pathname+filename+sheet #=VLOOKUP($C$3;Data!$B$3:$J$6;2)
+                elif TableIndex['Shift'][i]==12: y="Data!$B$9:$N$11" ; x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i][:-4]+"'" #Pathname+filename+sheet  #=VLOOKUP($C$3;Data!$B$9:$N$11;2)
                 else : y="ERROR" ; logging.critical("Failed to allocate hour table!")
-                x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i]+"'" #Pathname+filename+sheet
+                #x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i]+"'" #Pathname+filename+sheet
+                sheet=wb_target[TableIndex['Sheet'][i]] #VAR1 8H R-P-N 
                 while CelNum<CelMax:
                     OKCell = "=IF(I"+str(CelNum)+">0,I"+str(CelNum)+",IF("+x+"!D"+str(CelNum-4)+'="","",'+str(x)+"!D"+str(CelNum-4)+"))"
                     NOKCell = "=IF(J"+str(CelNum)+">0,J"+str(CelNum)+",IF("+x+"!E"+str(CelNum-4)+'="","",'+str(x)+"!E"+str(CelNum-4)+"))" 
-                    sheet=wb_target[TableIndex['Sheet'][i]] #VAR1 8H R-P-N 
                     if TableIndex['Shift'][i] == 12 and TableIndex['Aligment'][i] == 'Nočná': #VAR 3 12H Nocna
                         match CelNum:
                             case 6 | 7 | 8 | 9 : pass #x+Pre0
@@ -235,7 +232,7 @@ class FileCreation():
                             case 14 | 15 | 16 | 17 | 18 : OKCell = OKCell[:-2] + 'G13))' ; NOKCell = NOKCell[:-2] + 'H13))'
                             case _ : pass 
                     sheet['A'+str(CelNum)]="=IF("+x+"!B"+str(CelNum-4)+'="","",'+str(x)+"!B"+str(CelNum-4)+")"
-                    sheet['B'+str(CelNum)]='=VLOOKUP($C$3,'+y+','+str(CelNum-4)+')'
+                    sheet['B'+str(CelNum)]='=VLOOKUP($C$2,'+y+','+str(CelNum-4)+')'
                     sheet['C'+str(CelNum)]="=IF("+x+"!F"+str(CelNum-4)+'="","",'+str(x)+"!F"+str(CelNum-4)+")"
                     sheet['D'+str(CelNum)]="=IF("+x+"!H"+str(CelNum-4)+'="","",'+str(x)+"!H"+str(CelNum-4)+")"
                     sheet['G'+str(CelNum)]=OKCell
@@ -243,6 +240,7 @@ class FileCreation():
                     sheet['P'+str(CelNum)]="=IF("+x+"!G"+str(CelNum-4)+'="","",'+str(x)+"!G"+str(CelNum-4)+")"
                     sheet['Q'+str(CelNum)]="=IF("+x+"!C"+str(CelNum-4)+'="","",'+str(x)+"!C"+str(CelNum-4)+")"
                     CelNum=CelNum+1
+                sheet['C2']='='+x+'!O3'
                 sheet['C3']='='+x+'!O2'
                 sheet['G3']='='+x+'!P2'
 
