@@ -121,7 +121,7 @@ class FileCreation():
                 g_sheet=wb_target.sheetnames
             
             for i in range(len(g_sheet)):
-                match "18":#time.strftime("%H",time.localtime()): #
+                match time.strftime("%H",time.localtime()): #NEED TO ADUJST FOR DURING SHIFT GENERATIONS
                     case "06" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Ranná' ; ShiftIndex=1
                     case "14" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Poobedná' ; ShiftIndex=2
                     case "22" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Nočná' ; ShiftIndex=3
@@ -194,7 +194,7 @@ class FileCreation():
             TableIndex['Shift'] = TableIndex['Shift'] + [FileCreation.SheetData['ShiftCheck'][x]]
 
         for i in range(len(TableIndex['Sheet'])):
-            if TableIndex['Index'][i]==0 :  logging.debug('DataSheet : '+TableIndex['Sheet'][i]) #Always Skip Data Sheet
+            if TableIndex['Index'][i]==0 : logging.debug('DataSheet : '+TableIndex['Sheet'][i]) #Always Skip Data Sheet
             elif TableIndex['Index'][i]==1 :
                 logging.debug("Hodinove Sledovanie : "+TableIndex['Sheet'][i])
                 CelNum=5 #Formating offset
@@ -220,7 +220,7 @@ class FileCreation():
                 logging.debug("ShiftTable : "+TableIndex['Sheet'][i])
                 if   TableIndex['Shift'][i]==8 : y="Data!$B$3:$J$6" ;  x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i][:-3]+"'" #Pathname+filename+sheet #=VLOOKUP($C$3;Data!$B$3:$J$6;2)
                 elif TableIndex['Shift'][i]==12: y="Data!$B$9:$N$11" ; x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i][:-4]+"'" #Pathname+filename+sheet  #=VLOOKUP($C$3;Data!$B$9:$N$11;2)
-                else : y="ERROR" ;  logging.critical("Failed to allocate hour table!")
+                else : y="ERROR" ; logging.critical("Failed to allocate hour table!")
                 #x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i]+"'" #Pathname+filename+sheet
                 sheet=wb_target[TableIndex['Sheet'][i]] #VAR1 8H R-P-N 
                 while CelNum<CelMax:
