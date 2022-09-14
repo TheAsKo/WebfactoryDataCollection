@@ -1,8 +1,7 @@
 # WebfactoryDataCollection
 
 Process Flow:
-- Start Shift - Harcode - clean files
-              - AutoGen - create files depending on setting in UI
+- Start Shift - create files depending on setting in UI
           
 - Data Gather - Continuous gathering of data from webpage
               - Writing into Excel file
@@ -10,8 +9,9 @@ Process Flow:
 - Shift end - producing PDF at the end of varying shift for various machines
             - sending table to printer 
             - archiving excel with data
+            - cleaning files
 
-Hardcoded Excel:
+Hardcoded Excel: (DISCONTINUED)
 
 First iteration of working code ...
 Need to finish cleaning and having a stable run code for production testing
