@@ -9,12 +9,14 @@ import openpyxl
 from copy import copy
 import mouse
 import keyboard
-from CurrentMainV2 import WindowFullScreen
+from CurrentMainV2 import WindowFullscreen
 ###############################################
-# Declarations
-logging.getLogger().setLevel(logging.DEBUG)
+# Declarations  
 global TableIndex
-TableIndex={"Sheet":[],"Index":[],"Shift":[],"Aligment":[],} 
+TableIndex={"Sheet":[],"Index":[],"Shift":[],"Aligment":[]}
+logging.getLogger().setLevel(logging.DEBUG)
+#logging = logging.getLogger('ShiftStart') #DOESNT SHOW ANYTHING AND IDK WHY , EVERY OTHER FILE WORKS LIKE THIS FINE
+###############################################
 ## Copy a sheet with style, format, layout, ect. from one Excel file to another Excel file
 ## TY StackOverflow
 
@@ -81,21 +83,22 @@ def is_odd(num):
     return num % 2 != 0
 
 class FileCreation():
-    def __run__(AutoDataDirtyInput,EditFileDirtyInput,MachineDict,PathName):
+    def __run__(AutoDataActive,EditFileActive,AutoDataDirtyInput,EditFileDirtyInput,MachineDict,PathName):
         FileCreation.SheetData=MachineDict
-        FileCreation.AutoData(AutoDataDirtyInput)
-        ########################################################
-        os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY / NEED TO RESAVE FILE IN EXCEL , FILE HAS BROKEN THEMES ON CREATION SOMEHOW
-        time.sleep(2)
-        WindowFullScreen()
-        time.sleep(1)
-        MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
-        keyboard.press_and_release('Ctrl+S')
-        mouse.move(1900,10)
-        mouse.click("left")
-        mouse.move(MouseCur[0],MouseCur[1]) 
-        ########################################################       
-        FileCreation.EditFile(EditFileDirtyInput,PathName)
+        if AutoDataActive == True : #NEEDED DEPENDANCY ! DONT WORK RN 
+            FileCreation.AutoData(AutoDataDirtyInput)
+            ########################################################
+            os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY / NEED TO RESAVE FILE IN EXCEL , FILE HAS BROKEN THEMES ON CREATION SOMEHOW
+            time.sleep(1)
+            WindowFullscreen()
+            MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
+            keyboard.press_and_release('Ctrl+S')
+            mouse.move(1900,10)
+            mouse.click("left")
+            mouse.move(MouseCur[0],MouseCur[1]) 
+            ########################################################       
+        if EditFileActive == True :    
+            FileCreation.EditFile(EditFileDirtyInput,PathName)
     
     def AutoData(DirtyInput):
         try:
@@ -118,7 +121,7 @@ class FileCreation():
                 g_sheet=wb_target.sheetnames
             
             for i in range(len(g_sheet)):
-                match time.strftime("%H",time.localtime()): #
+                match "18":#time.strftime("%H",time.localtime()): #
                     case "06" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Ranná' ; ShiftIndex=1
                     case "14" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Poobedná' ; ShiftIndex=2
                     case "22" if FileCreation.SheetData['ShiftCheck'][i]==8  : MachineCheck='Nočná' ; ShiftIndex=3
@@ -169,7 +172,7 @@ class FileCreation():
 
         g_sheet=wb_target.sheetnames
         logging.debug(g_sheet)
-        print(FileCreation.SheetData)
+        logging.debug(FileCreation.SheetData)
 
         for i in range(len(g_sheet)): #NOT PRETTY INDEXING METHOD
             logging.debug(g_sheet[i])
@@ -179,7 +182,7 @@ class FileCreation():
                 case _    : logging.debug('EditingTable') ; IndexCase=2 #NOT SAFE DEFAULTING
             TableIndex['Sheet'] = TableIndex['Sheet'] + [g_sheet[i]]
             TableIndex['Index'] = TableIndex['Index'] + [IndexCase]
-            print(TableIndex)
+            logging.debug(TableIndex)
             x = is_odd(i) #NOT PRETTY AT ALL BUT I CANT THINK OF ANYTHING BETTER
             match i: #i0-2=x0,i3-4=x1,i5-6=x2,i7-8=x3,i9-10=x4,....
                 case 0 | 1 | 2 : x=0
@@ -191,7 +194,7 @@ class FileCreation():
             TableIndex['Shift'] = TableIndex['Shift'] + [FileCreation.SheetData['ShiftCheck'][x]]
 
         for i in range(len(TableIndex['Sheet'])):
-            if TableIndex['Index'][i]==0 : logging.debug('DataSheet : '+TableIndex['Sheet'][i]) #Always Skip Data Sheet
+            if TableIndex['Index'][i]==0 :  logging.debug('DataSheet : '+TableIndex['Sheet'][i]) #Always Skip Data Sheet
             elif TableIndex['Index'][i]==1 :
                 logging.debug("Hodinove Sledovanie : "+TableIndex['Sheet'][i])
                 CelNum=5 #Formating offset
@@ -217,19 +220,21 @@ class FileCreation():
                 logging.debug("ShiftTable : "+TableIndex['Sheet'][i])
                 if   TableIndex['Shift'][i]==8 : y="Data!$B$3:$J$6" ;  x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i][:-3]+"'" #Pathname+filename+sheet #=VLOOKUP($C$3;Data!$B$3:$J$6;2)
                 elif TableIndex['Shift'][i]==12: y="Data!$B$9:$N$11" ; x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i][:-4]+"'" #Pathname+filename+sheet  #=VLOOKUP($C$3;Data!$B$9:$N$11;2)
-                else : y="ERROR" ; logging.critical("Failed to allocate hour table!")
+                else : y="ERROR" ;  logging.critical("Failed to allocate hour table!")
                 #x="'"+pathname+'\[AutoData_gen.xlsx]AutoData-'+TableIndex['Sheet'][i]+"'" #Pathname+filename+sheet
                 sheet=wb_target[TableIndex['Sheet'][i]] #VAR1 8H R-P-N 
                 while CelNum<CelMax:
-                    OKCell = "=IF(I"+str(CelNum)+">0,I"+str(CelNum)+",IF("+x+"!D"+str(CelNum-4)+'="","",'+str(x)+"!D"+str(CelNum-4)+"))"
-                    NOKCell = "=IF(J"+str(CelNum)+">0,J"+str(CelNum)+",IF("+x+"!E"+str(CelNum-4)+'="","",'+str(x)+"!E"+str(CelNum-4)+"))" 
+                    OKCell  = "=IF(NOT(I"+str(CelNum)+'=""),I'+str(CelNum)+",IF("+x+"!D"+str(CelNum-4)+'="","",'+str(x)+"!D"+str(CelNum-4)+"))"
+                    NOKCell = "=IF(NOT(I"+str(CelNum)+'=""),J'+str(CelNum)+",IF("+x+"!E"+str(CelNum-4)+'="","",'+str(x)+"!E"+str(CelNum-4)+"))" 
                     if TableIndex['Shift'][i] == 12 and TableIndex['Aligment'][i] == 'Nočná': #VAR 3 12H Nocna
                         match CelNum:
-                            case 6 | 7 | 8 | 9 : pass #x+Pre0
-                            case 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 : pass #x+21
+                            case 6 | 7 | 8 | 9 : 
+                                OKCell = OKCell[:-2] + '-L'+str(CelNum)+'))' ; NOKCell = NOKCell[:-2] + '-M'+str(CelNum)+'))'
+                            case 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 : 
+                                OKCell = OKCell[:-2] + '+L'+str(CelNum)+'))' ; NOKCell = NOKCell[:-2] + '+M'+str(CelNum)+'))'
                     elif TableIndex['Shift'][i] == 12 and TableIndex['Aligment'][i] == 'Ranná': # VAR2 12H R
                         match CelNum :
-                            case 14 | 15 | 16 | 17 | 18 : OKCell = OKCell[:-2] + 'G13))' ; NOKCell = NOKCell[:-2] + 'H13))'
+                            case 14 | 15 | 16 | 17 | 18 : OKCell = OKCell[:-2] + '+G13))' ; NOKCell = NOKCell[:-2] + '+H13))'
                             case _ : pass 
                     sheet['A'+str(CelNum)]="=IF("+x+"!B"+str(CelNum-4)+'="","",'+str(x)+"!B"+str(CelNum-4)+")"
                     sheet['B'+str(CelNum)]='=VLOOKUP($C$2,'+y+','+str(CelNum-4)+')'
@@ -237,8 +242,8 @@ class FileCreation():
                     sheet['D'+str(CelNum)]="=IF("+x+"!H"+str(CelNum-4)+'="","",'+str(x)+"!H"+str(CelNum-4)+")"
                     sheet['G'+str(CelNum)]=OKCell
                     sheet['H'+str(CelNum)]=NOKCell
-                    sheet['P'+str(CelNum)]="=IF("+x+"!G"+str(CelNum-4)+'="","",'+str(x)+"!G"+str(CelNum-4)+")"
-                    sheet['Q'+str(CelNum)]="=IF("+x+"!C"+str(CelNum-4)+'="","",'+str(x)+"!C"+str(CelNum-4)+")"
+                    sheet['T'+str(CelNum)]="=IF("+x+"!G"+str(CelNum-4)+'="","",'+str(x)+"!G"+str(CelNum-4)+")"
+                    sheet['U'+str(CelNum)]="=IF("+x+"!C"+str(CelNum-4)+'="","",'+str(x)+"!C"+str(CelNum-4)+")"
                     CelNum=CelNum+1
                 sheet['C2']='='+x+'!O3'
                 sheet['C3']='='+x+'!O2'
