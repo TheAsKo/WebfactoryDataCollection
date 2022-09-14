@@ -207,7 +207,7 @@ class FileCreation():
                     sheet['E'+str(CelNum)]="=IF("+x+"!D"+str(CelNum+1)+'="","",'+str(x)+"!D"+str(CelNum+1)+")"
                     sheet['F'+str(CelNum)]="=IF("+x+"!E"+str(CelNum+1)+'="","",'+str(x)+"!E"+str(CelNum+1)+")"
                     sheet['G'+str(CelNum)]="=IF("+x+"!F"+str(CelNum+1)+'="","",'+str(x)+"!F"+str(CelNum+1)+")"
-                    sheet['I'+str(CelNum)]="=IF("+x+"!T"+str(CelNum+1)+'="","",'+str(x)+"!T"+str(CelNum+1)+")"
+                    sheet['I'+str(CelNum)]="=IF("+x+"!X"+str(CelNum+1)+'="","",'+str(x)+"!X"+str(CelNum+1)+")"
                     CelNum=CelNum+1
                 sheet['I2']='Pracovisko: '+str(TableIndex['Sheet'][i][20:])   
                 sheet['J2']='="Dátum: "&'+str(x)+'!G3'
