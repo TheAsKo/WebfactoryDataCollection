@@ -17,11 +17,12 @@ import keyboard
 # Declarations
 SheetDict = Config.ConfigRead('MAIN','SheetDict','dict')
 ScreenRegionDict = Config.ConfigRead('MAIN','ScreenRegionDict','dict')
-DEBUG=1 # For my personal use , maybe cleaned up after ....
+TimeDEBUG = Config.ConfigRead('MAIN','TimeDebug','bool')  # For my personal use , maybe cleaned up after ....
 OnlyRootDebug = Config.ConfigRead('MAIN','OnlyRootDebug','bool') #Used to disable all libs from using logging :)
 pytesseract.pytesseract.tesseract_cmd = Config.ConfigRead('MAIN','tess_cmd') #Tesseract .exe bcs i cant use PATH on admin locked work device :/ need to maybe auto location
 tessdefault_config = Config.ConfigRead('MAIN','tessdefault_config')
 tessnumber_config = Config.ConfigRead('MAIN','tessnumber_config')
+tessadvnumber_config = Config.ConfigRead('MAIN','tessadvnumber_config')
 logging.getLogger().setLevel(logging.DEBUG) #Need to add to GUI as check + need to clean/add logging
 URLList = Config.ConfigRead('MAIN','URLList','list')
 #URLDict #Need to add some sort of autologin at start of the shift
@@ -89,7 +90,7 @@ def LoadCheck(): #Checking if webpage is loaded fully...
         log.info('Loading not finished , waiting...')
         return 0
 ##############################################################################################
-def ImageProcess(IMGName,range2=-1,range=0,tescfg=tessnumber_config): #Image Data Extraction
+def ImageProcess(IMGName,range2=-1,range=0,tescfg=tessdefault_config): #Image Data Extraction
     log = logging.getLogger('ImageProcess')
     try:
         img = cv2.imread(str(IMGName)+'.png')
@@ -97,24 +98,23 @@ def ImageProcess(IMGName,range2=-1,range=0,tescfg=tessnumber_config): #Image Dat
         value=pytesseract.image_to_string(img,config=tescfg)[range:range2]    
     except:
         log.debug(IMGName+" error!")
-        if DEBUG==1 :
-            log.exception('')
+        log.exception('')
         return "error"
     else:
-        if DEBUG==1:log.debug(IMGName+" processed...")
         return value
 ##############################################################################################
 #print ([k for k in logging.Logger.manager.loggerDict]) #### totally not from stackoverflow :)
 ##############################################################################################
-def WindowFullscreen():
+def WindowFullscreen(presleep=1,postsleep=0.1):
     log = logging.getLogger('WindowFullscreen')
-    time.sleep(1) #Maybe not needed , i just want to be sure to get proper window selection
+    time.sleep(presleep) #Used for securing correct window 
     window=gw.getActiveWindow()   #Forcing window maximizing
     if window.isMaximized == True: 
         log.debug("Window is maximized")
     else :
         window.maximize()
         log.debug("Maximizing window")
+    time.sleep(postsleep) #Used to wait for maximizing to happen
 ##############################################################################################
 def DeleteFile(value):
     log = logging.getLogger('DeleteFile')
@@ -126,10 +126,10 @@ def DeleteFile(value):
         else:
             log.debug("Delefing file : "+value+" successfull.")
 ##############################################################################################
-def ImageGrab(MachineName,HourValue,MachineURL):
+def ImageGrab(MachineName,HourValue,MachineURL): #AFTER TIME CHECK - OK 
     log = logging.getLogger('ImageGrab')
-    os.system("start chrome --start-maximized --new-window "+URLList[MachineURL]) #Start Browser (need to add auto login - most likely just mouse clicks)
     
+    os.system("start chrome --start-maximized --new-window "+URLList[MachineURL]) #Start Browser (need to add auto login - most likely just mouse clicks)   
     WindowFullscreen()
     
     LoadTimer=0
@@ -146,7 +146,7 @@ def ImageGrab(MachineName,HourValue,MachineURL):
         if LoadTimer>=35:
             log.info('Skipping loading...')
             break
-    
+        
     for each in ScreenRegionDict:
         log.debug("Image Creation: "+each)
         x=ScreenRegionDict[each] #Redundant line but looks better ? + less listing through dict ? performance gains ?
@@ -156,10 +156,11 @@ def ImageGrab(MachineName,HourValue,MachineURL):
     mouse.move(10,10)
     mouse.click("middle")
     mouse.move(MouseCur[0],MouseCur[1])
+    
 ##############################################################################################
 def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile): #MAYBE REWRITE TO THREADING FOR ALL VALUES TO GET WRITE AT SAME TIME
-    log = logging.getLogger('ExcelOutput') # FULL TIME 2.34S , CPU TIME 0.25S
-    if DEBUG==1:
+    log = logging.getLogger('ExcelOutput') # FULL TIME 1.4S , CPU TIME 0.34S
+    if TimeDEBUG==1:
         StartTime=time.time()
         StartTimeCPU=time.process_time()
     log.info("Applying data to excel")  #Excel Start
@@ -175,10 +176,10 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile): #MAYBE REWRITE TO 
         match each: #Editing cell value
             case "TimeFlag" : SheetDict[each][1] = str(SheetDictDataAnswer-1) #-1 = Offset used in excel for header
             case "TimeSend" : SheetDict[each][1] = time.strftime("%H:%M:%S",time.localtime())
-            case "OEE" | "Scrap" : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-1) #NOT TRUE , NEED TO MONITOR DATA -> Extra removing % , it safer to detect and then remove than to block with blacklist
-            case "Product" : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-5,tescfg='--psm 7 --oem 3') #Should be good , need more data
+            case "OEE" | "Scrap" : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-1,tescfg=tessadvnumber_config) #NOT TRUE , NEED TO MONITOR DATA -> Extra removing % , it safer to detect and then remove than to block with blacklist
+            case "Product" : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-5) #Should be good , need more data
             case "OK" : #Hardcoded cleaning of value + Maybe still broken + Not pretty at all
-                x = ImageProcess(each+MachineName+str(HourValue),4)
+                x = ImageProcess(each+MachineName+str(HourValue),4,tescfg=tessnumber_config)
                 if x=="error" or x=="": #Not pretty handling
                     SheetDict[each][1] = "error"
                     break  
@@ -188,10 +189,10 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile): #MAYBE REWRITE TO 
                     #x = x[y:]
                     x = x[:-y]
                     log.debug("OK after :"+x)
-                    time.sleep(0.1)   #Maybe still broken , need to log data
+                    #time.sleep(0.1)   #Maybe still broken , need to log data
                 SheetDict[each][1] = x
             case 'NOK': # NEED TO FINISH , BAD REPORTING OF 0,1 
-                SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-1,tescfg="--psm 7 --oem 3") #Need to log data
+                SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-1,tescfg=tessnumber_config) #Need to log data
             case _ : SheetDict[each][1] = ImageProcess(each+MachineName+str(HourValue),-1)
 
         log.debug(str(each)+" : "+str(SheetDict[each][0]+' : '+str(SheetDict[each][1])))
@@ -205,17 +206,16 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile): #MAYBE REWRITE TO 
         log.warning("Excel edit failed") 
     else:
         log.info('Excel edit success')
-    if DEBUG==1:
+    if TimeDEBUG==1:
         EndTime=time.time() - StartTime
         EndTimeCPU=time.process_time() - StartTimeCPU
         log.debug('Execution time FULL - EXCEL OUTPUT :'+str(EndTime))
         log.debug('Execution time CPU - EXCEL OUTPUT :'+str(EndTimeCPU))
 ##############################################################################################
-def ExcelUpdateData():
-    os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY TO UPDATE DATA
-    time.sleep(2)
-    WindowFullscreen()
-    time.sleep(1)
+def ExcelUpdate(File,PreSleep=1,PostSleep=0.1,Save=False):
+    os.startfile(File) #NOT PRETTY WAY TO UPDATE DATA
+    WindowFullscreen(PreSleep,PostSleep)
+    if Save == True : keyboard.press_and_release('Ctrl+S')
     MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
     mouse.move(1900,10)
     mouse.click("left")

@@ -87,18 +87,26 @@ class FileCreation():
         FileCreation.SheetData=MachineDict
         if AutoDataActive == True : #NEEDED DEPENDANCY ! DONT WORK RN 
             FileCreation.AutoData(AutoDataDirtyInput)
-            ########################################################
-            os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY / NEED TO RESAVE FILE IN EXCEL , FILE HAS BROKEN THEMES ON CREATION SOMEHOW
-            time.sleep(1)
-            WindowFullscreen()
-            MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
-            keyboard.press_and_release('Ctrl+S')
-            mouse.move(1900,10)
-            mouse.click("left")
-            mouse.move(MouseCur[0],MouseCur[1]) 
-            ########################################################       
         if EditFileActive == True :    
             FileCreation.EditFile(EditFileDirtyInput,PathName)
+        ########################################################
+        os.startfile('AutoData_gen.xlsx') #NOT PRETTY WAY / NEED TO RESAVE FILE IN EXCEL , FILE HAS BROKEN THEMES ON CREATION SOMEHOW
+        time.sleep(1) # + Cant use def in lib due to needing to have both files run at same time 
+        WindowFullscreen()
+        MouseCur=mouse.get_position() #Close Window (os.kill dont work without admin privileges)
+        keyboard.press_and_release('Ctrl+S')
+        os.startfile('Hodinové_sledovanie_gen.xlsx')
+        time.sleep(1)
+        WindowFullscreen()
+        MouseCur=mouse.get_position()
+        keyboard.press_and_release('Ctrl+S')
+        mouse.move(1900,10)
+        mouse.click("left")
+        time.sleep(0.5)
+        mouse.click("left")
+        mouse.move(MouseCur[0],MouseCur[1])    
+        ########################################################    
+
     
     def AutoData(DirtyInput):
         try:
@@ -133,7 +141,7 @@ class FileCreation():
                 sheet=wb_target[g_sheet[i]]
                 sheet['O2']=MachineCheck
                 sheet['P2']=time.strftime("%d.%m.%Y",time.localtime())
-                sheet['O3']=str(ShiftIndex)
+                sheet['O3']=ShiftIndex
 
             wb_target.save('AutoData_gen.xlsx') #####AUTODATA
             wb_target.close()
@@ -182,16 +190,16 @@ class FileCreation():
                 case _    : logging.debug('EditingTable') ; IndexCase=2 #NOT SAFE DEFAULTING
             TableIndex['Sheet'] = TableIndex['Sheet'] + [g_sheet[i]]
             TableIndex['Index'] = TableIndex['Index'] + [IndexCase]
-            logging.debug(TableIndex)
             x = is_odd(i) #NOT PRETTY AT ALL BUT I CANT THINK OF ANYTHING BETTER
             match i: #i0-2=x0,i3-4=x1,i5-6=x2,i7-8=x3,i9-10=x4,....
-                case 0 | 1 | 2 : x=0
+                case 0 | 1 | 2 : y=0
                 case _ : 
                     match x:
-                        case True: x=math.floor(i/2)
+                        case True: y=math.floor(i/2)
                         case False: pass
-
+            x = y #NOT PRETTY BUT FIXED ERROR 
             TableIndex['Shift'] = TableIndex['Shift'] + [FileCreation.SheetData['ShiftCheck'][x]]
+            logging.debug(TableIndex)
 
         for i in range(len(TableIndex['Sheet'])):
             if TableIndex['Index'][i]==0 : logging.debug('DataSheet : '+TableIndex['Sheet'][i]) #Always Skip Data Sheet
@@ -199,6 +207,8 @@ class FileCreation():
                 logging.debug("Hodinove Sledovanie : "+TableIndex['Sheet'][i])
                 CelNum=5 #Formating offset
                 CelMax=TableIndex['Shift'][i]+CelNum
+                logging.debug("Shift: "+str(TableIndex['Shift'][i]))
+                logging.debug("CelMax: "+str(CelMax))
                 sheet=wb_target[TableIndex['Sheet'][i]]
                 x="'"+str(g_sheet[i])+"'"
                 while CelNum<CelMax:
@@ -213,6 +223,9 @@ class FileCreation():
                 sheet['J2']='="Dátum: "&'+str(x)+'!G3'
                 #sheet['I3']='Meno+os.číslo:'
                 sheet['J3']='="Zmena: "&'+str(x)+'!C3'
+                sheet['F'+str(CelMax)]='='+x+'!B'+str(CelMax+5)
+                sheet['G'+str(CelMax)]='='+x+'!C'+str(CelMax+5)
+                sheet['J'+str(CelMax)]='='+x+'!D'+str(CelMax+5)
                         
             elif TableIndex['Index'][i]==2 :
                 CelNum=6 #Formating offset
