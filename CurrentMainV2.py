@@ -80,6 +80,10 @@ def LoadCheck(): #Checking if webpage is loaded fully...
     if cv2.countNonZero(b1) == 0  and cv2.countNonZero(g1) == 0 and cv2.countNonZero(r1) == 0:
         LoadGood=True
     else:
+        log.debug("First load not correct...")
+        log.debug(str(cv2.countNonZero(b1)))
+        log.debug(str(cv2.countNonZero(g1)))
+        log.debug(str(cv2.countNonZero(r1)))
         return 0
     if LoadGood==True and ImgDiffGreen>0.40 or LoadGood==True and ImgDiffRed>0.40: #0.40 is for moused grayness , 0.9 is normal
         DeleteFile("LoadCheck.png")
@@ -93,9 +97,11 @@ def LoadCheck(): #Checking if webpage is loaded fully...
 def ImageProcess(IMGName,range2=-1,range=0,tescfg=tessdefault_config): #Image Data Extraction
     log = logging.getLogger('ImageProcess')
     try:
-        img = cv2.imread(str(IMGName)+'.png')
-        img = cv2.resize(img, None, fx=2, fy=2,interpolation=cv2.INTER_CUBIC)
-        value=pytesseract.image_to_string(img,config=tescfg)[range:range2]    
+        img = cv2.imread(str(IMGName)+'.png') #Read Image
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #Convert to Grayscale
+        img = cv2.bitwise_not(cv2.threshold(img, 200, 200, cv2.THRESH_BINARY)[1]) #Thresh image for denoising , then invert
+        img = cv2.resize(img, None, fx=2, fy=2,interpolation=cv2.INTER_CUBIC) #Resize for better image quality + cubic interpolation for smoothing
+        value=pytesseract.image_to_string(img,config=tescfg)[range:range2] #Process image    
     except:
         log.debug(IMGName+" error!")
         log.exception('')
@@ -134,9 +140,10 @@ def ImageGrab(MachineName,HourValue,MachineURL): #AFTER TIME CHECK - OK
     
     LoadTimer=0
     LoadRefresh=1
-    while LoadCheck()==0: #not great way to check i think but works
-        LoadTimer=LoadTimer+1
-        time.sleep(1)
+    while LoadCheck()==0: #not great way to check but works
+        SleepValue = 0.5 #TEMP
+        LoadTimer=LoadTimer+SleepValue
+        time.sleep(SleepValue)
         log.debug('LoadTimer= '+str(LoadTimer))
         log.info("Waiting for page load")
         if LoadTimer>=15 and LoadRefresh==1:
@@ -182,7 +189,7 @@ def ExcelOutput(MachineName,HourValue,ShiftCheck,PathToFile): #MAYBE REWRITE TO 
                 x = ImageProcess(each+MachineName+str(HourValue),4,tescfg=tessnumber_config)
                 if x=="error" or x=="": #Not pretty handling
                     SheetDict[each][1] = "error"
-                    break  
+                    continue  #Currently dont write error to excel just skips whole OK check , better than breaking code without logs :)
                 while x.isdigit() == False : #Still too many infinite loops
                     log.debug("OK before:"+x)
                     y=negative(len(x)-1) 
